@@ -3595,7 +3595,6 @@ local function startCoinCollect()
         if S.autoHopCoinEnabled and S.autoCoinEnabled and not _coinHopDone and not getgenv().OxyoHopStopped then
             _coinHopDone    = true
             _coinHopPending = true
-            Rayfield:Notify({ Title = "Auto Hop", Content = "Coin Rain ended — hopping in 80s...", Duration = 4, Image = 4483362458 })
             task.wait(80)
             if not getgenv().OxyoHopStopped and S.autoHopCoinEnabled then
                 getgenv().OxyoAutoHopCoin = true
