@@ -6782,6 +6782,7 @@ game:GetService("Players").LocalPlayer.AncestryChanged:Connect(function()
     pcall(_stopReporter)
     pcall(_stopUserCount)
 end)
+task.spawn(function() task.wait(2)
 BrainrotFinderTab:CreateSection("Status")
 local _userCountPara = BrainrotFinderTab:CreateParagraph({
     Title   = "👥 Active Users",
@@ -7002,6 +7003,7 @@ for _, rarity in ipairs({ "Godly", "Celestial", "Secret", "Mythic" }) do
         end,
     })
 end
+end) -- close task.spawn (Finder UI)
 end)()
 
 ;(function()
@@ -7188,6 +7190,7 @@ local function _startDreamLoop()
     end
 end
 
+task.spawn(function() task.wait(2)
 DreamsTab:CreateSection("💜 Dream Event")
 
 DreamsTab:CreateToggle({
@@ -7406,6 +7409,7 @@ DreamsTab:CreateButton({
     end,
 })
 
+end) -- close task.spawn (Dreams UI)
 end)()
 
 ;(function()
@@ -7685,6 +7689,7 @@ _startAquaLoop = function()
     end)
 end
 
+task.spawn(function() task.wait(2)
 AquaTab:CreateSection("🎣 Auto Fish")
 
 AquaTab:CreateParagraph({
@@ -7767,6 +7772,7 @@ AquaTab:CreateButton({
     end,
 })
 
+end) -- close task.spawn (Aqua UI)
 end)()
 
 if getgenv().OxyoAutoHopAqua == true and not getgenv().OxyoHopAquaStopped then
