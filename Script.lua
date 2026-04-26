@@ -444,7 +444,7 @@ local _hasAdvancedAPI = (typeof(getrawmetatable) == "function")
     and (typeof(newcclosure) == "function")
     and (typeof(getnamecallmethod) == "function")
     and (pcall(function() return getrawmetatable(game) end))
-local AUTO_EXEC_URL = "https://raw.githubusercontent.com/idcidc1234xdlol-bit/lava/refs/heads/main/lava"
+local AUTO_EXEC_URL = "https://raw.githubusercontent.com/idkidk123lolxd-source/probable-octo-doodlegay/refs/heads/main/Script.lua"
 local HttpService = game:GetService("HttpService")
 local _hopPlaceId = game.PlaceId
 local _hopJobId   = game.JobId
@@ -3595,8 +3595,8 @@ local function startCoinCollect()
         if S.autoHopCoinEnabled and S.autoCoinEnabled and not _coinHopDone and not getgenv().OxyoHopStopped then
             _coinHopDone    = true
             _coinHopPending = true
-            Rayfield:Notify({ Title = "Auto Hop", Content = "Coin Rain ended — hopping...", Duration = 2, Image = 4483362458 })
-            task.wait(1)
+            Rayfield:Notify({ Title = "Auto Hop", Content = "Coin Rain ended — hopping in 80s...", Duration = 4, Image = 4483362458 })
+            task.wait(80)
             if not getgenv().OxyoHopStopped and S.autoHopCoinEnabled then
                 getgenv().OxyoAutoHopCoin = true
                 getgenv().OxyoHopStopped  = false
@@ -3810,7 +3810,26 @@ local hopToggleRef = HopTab:CreateToggle({
                         end
                     end
                     if getgenv().OxyoAutoHopCoin and not getgenv().OxyoHopStopped then
-                        task.spawn(smartHop)
+                        local sCheck, tCheck = getCoinRainStatus()
+                        if sCheck == "active" then
+                            Rayfield:Notify({ Title = "🪙 Coin Rain", Content = "Event just started — waiting 90s...", Duration = 5, Image = 4483362458 })
+                            local graceWaited = 0
+                            while graceWaited < 90 and getgenv().OxyoAutoHopCoin and not getgenv().OxyoHopStopped do
+                                task.wait(2)
+                                graceWaited = graceWaited + 2
+                                local sg, tg = getCoinRainStatus()
+                                if sg == "active" and (tg or 0) >= 8 then
+                                    Rayfield:Notify({ Title = "🪙 Coin Rain!", Content = "Started! Farming now...", Duration = 3, Image = 4483362458 })
+                                    coinEventActive = true
+                                    S.coinEventDuration = tg or 60
+                                    startCoinCollect()
+                                    return
+                                end
+                            end
+                        end
+                        if getgenv().OxyoAutoHopCoin and not getgenv().OxyoHopStopped then
+                            task.spawn(smartHop)
+                        end
                     end
                 else
                     Rayfield:Notify({ Title = "Auto Hop", Content = "No Coin Rain — hopping...", Duration = 2, Image = 4483362458 })
